@@ -3,9 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, ChevronRight } from 'lucide-react';
 import axios from 'axios';
-import { API } from '../../utils/api';
-import { useTranslation } from '../../context/LanguageContext';
-import { CyberButton } from '../../components/common/CyberUI';
+import { API } from '../utils/api';
+import { useTranslation } from '../context/LanguageContext';
+import { CyberButton } from '../components/common/CyberUI';
 
 const IsometricZone = ({ zone, onClick, selected, index }) => {
   const [hovered, setHovered] = useState(false);

@@ -6,10 +6,10 @@ import {
   Layers, Vote, Building2, TrendingUp
 } from 'lucide-react';
 import axios from 'axios';
-import { API } from '../../utils/api';
-import { useAuth } from '../../context/AuthContext';
-import { useTranslation } from '../../context/LanguageContext';
-import { CyberCard } from '../../components/common/CyberUI';
+import { API } from '../utils/api';
+import { useAuth } from '../context/AuthContext';
+import { useTranslation } from '../context/LanguageContext';
+import { CyberCard } from '../components/common/CyberUI';
 
 const DashboardPage = () => {
   const { user } = useAuth();

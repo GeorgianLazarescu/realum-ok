@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
-import { useTranslation } from '../../context/LanguageContext';
-import { CyberCard, CyberButton } from '../../components/common/CyberUI';
+import { useAuth } from '../context/AuthContext';
+import { useTranslation } from '../context/LanguageContext';
+import { CyberCard, CyberButton } from '../components/common/CyberUI';
 
 const LoginPage = () => {
   const { login } = useAuth();

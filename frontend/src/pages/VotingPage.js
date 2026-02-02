@@ -2,10 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Vote, ThumbsUp, ThumbsDown, Plus } from 'lucide-react';
 import axios from 'axios';
-import { API } from '../../utils/api';
-import { useAuth } from '../../context/AuthContext';
-import { useTranslation } from '../../context/LanguageContext';
-import { CyberCard, CyberButton } from '../../components/common/CyberUI';
+import { API } from '../utils/api';
+import { useAuth } from '../context/AuthContext';
+import { useTranslation } from '../context/LanguageContext';
+import { CyberCard, CyberButton } from '../components/common/CyberUI';
 
 const VotingPage = () => {
   const { user } = useAuth();

@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Play, RefreshCw, Users, ArrowRight, Flame } from 'lucide-react';
 import axios from 'axios';
-import { API } from '../../utils/api';
-import { useTranslation } from '../../context/LanguageContext';
-import { CyberCard, CyberButton } from '../../components/common/CyberUI';
+import { API } from '../utils/api';
+import { useTranslation } from '../context/LanguageContext';
+import { CyberCard, CyberButton } from '../components/common/CyberUI';
 
 const SimulationPage = () => {
   const t = useTranslation();

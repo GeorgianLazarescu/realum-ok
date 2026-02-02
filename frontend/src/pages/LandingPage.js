@@ -2,10 +2,10 @@ import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ChevronRight, Sparkles, Target, Shield, Heart } from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
-import { useTranslation } from '../../context/LanguageContext';
-import { CyberButton } from '../../components/common/CyberUI';
-import LanguageSelector from '../../components/common/LanguageSelector';
+import { useAuth } from '../context/AuthContext';
+import { useTranslation } from '../context/LanguageContext';
+import { CyberButton } from '../components/common/CyberUI';
+import LanguageSelector from '../components/common/LanguageSelector';
 
 const LandingPage = () => {
   const { user } = useAuth();

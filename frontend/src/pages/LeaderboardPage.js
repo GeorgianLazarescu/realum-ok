@@ -2,10 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Trophy, Medal } from 'lucide-react';
 import axios from 'axios';
-import { API } from '../../utils/api';
-import { useAuth } from '../../context/AuthContext';
-import { useTranslation } from '../../context/LanguageContext';
-import { CyberCard } from '../../components/common/CyberUI';
+import { API } from '../utils/api';
+import { useAuth } from '../context/AuthContext';
+import { useTranslation } from '../context/LanguageContext';
+import { CyberCard } from '../components/common/CyberUI';
 
 const LeaderboardPage = () => {
   const { user } = useAuth();

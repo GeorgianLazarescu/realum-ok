@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Users, Sparkles, Target, Shield, Heart } from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
-import { useTranslation } from '../../context/LanguageContext';
-import { CyberCard, CyberButton } from '../../components/common/CyberUI';
+import { useAuth } from '../context/AuthContext';
+import { useTranslation } from '../context/LanguageContext';
+import { CyberCard, CyberButton } from '../components/common/CyberUI';
 
 const RegisterPage = () => {
   const { register } = useAuth();
