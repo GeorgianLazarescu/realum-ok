@@ -154,7 +154,8 @@ function App() {
               {/* Catch all - redirect to dashboard */}
               <Route path="*" element={<Navigate to="/dashboard" replace />} />
             </Routes>
-          </ConfettiProvider>
+            </ConfettiProvider>
+          </Web3Provider>
         </AuthProvider>
       </LanguageProvider>
     </BrowserRouter>
