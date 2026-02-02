@@ -1649,6 +1649,14 @@ async def get_simulation_status():
 
 @api_router.post("/seed")
 async def seed_data():
+    # Clear existing seed data first to avoid duplicates
+    await db.jobs.delete_many({"id": {"$regex": "^job-"}})
+    await db.zones.delete_many({})
+    await db.proposals.delete_many({"id": {"$regex": "^prop-"}})
+    await db.courses.delete_many({"id": {"$regex": "^course-"}})
+    await db.projects.delete_many({"id": {"$regex": "^proj-"}})
+    await db.marketplace.delete_many({"id": {"$regex": "^mkt-"}})
+    
     # Seed comprehensive jobs
     jobs = [
         # HUB Jobs
