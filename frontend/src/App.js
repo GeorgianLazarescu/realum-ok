@@ -141,6 +141,14 @@ function App() {
                 </ProtectedRoute>
               } />
               
+              <Route path="/referral" element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <ReferralPage />
+                  </AppLayout>
+                </ProtectedRoute>
+              } />
+              
               {/* Catch all - redirect to dashboard */}
               <Route path="*" element={<Navigate to="/dashboard" replace />} />
             </Routes>
