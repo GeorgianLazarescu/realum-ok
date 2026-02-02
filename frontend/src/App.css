@@ -1,34 +1,183 @@
-.App-logo {
-    height: 40vmin;
-    pointer-events: none;
+.App {
+  min-height: 100vh;
+  background-color: #050505;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-    .App-logo {
-        animation: App-logo-spin infinite 20s linear;
-    }
+/* Additional cyberpunk animations */
+@keyframes flicker {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.8; }
 }
 
-.App-header {
-    background-color: #0f0f10;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    font-size: calc(10px + 2vmin);
-    color: white;
+@keyframes typing {
+  from { width: 0; }
+  to { width: 100%; }
 }
 
-.App-link {
-    color: #61dafb;
+@keyframes blink {
+  0%, 50% { border-color: transparent; }
+  51%, 100% { border-color: #00F0FF; }
 }
 
-@keyframes App-logo-spin {
-    from {
-        transform: rotate(0deg);
-    }
-    to {
-        transform: rotate(360deg);
-    }
+.terminal-text {
+  overflow: hidden;
+  white-space: nowrap;
+  animation: typing 2s steps(30) forwards;
+}
+
+.cursor-blink {
+  border-right: 2px solid;
+  animation: blink 1s infinite;
+}
+
+/* Hexagon shape for special elements */
+.hexagon {
+  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+}
+
+/* Data stream effect */
+@keyframes data-stream {
+  0% {
+    background-position: 0% 0%;
+  }
+  100% {
+    background-position: 0% 100%;
+  }
+}
+
+.data-stream {
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 240, 255, 0.1) 2px,
+    rgba(0, 240, 255, 0.1) 4px
+  );
+  background-size: 100% 200%;
+  animation: data-stream 20s linear infinite;
+}
+
+/* Circuit pattern */
+.circuit-bg {
+  background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M30 0v10M30 50v10M0 30h10M50 30h10M30 20v20M20 30h20' stroke='%2300F0FF' stroke-opacity='0.1' fill='none'/%3E%3C/svg%3E");
+}
+
+/* Glow pulse for important elements */
+@keyframes glow-pulse {
+  0%, 100% {
+    filter: drop-shadow(0 0 5px rgba(0, 240, 255, 0.5));
+  }
+  50% {
+    filter: drop-shadow(0 0 20px rgba(0, 240, 255, 0.8));
+  }
+}
+
+.glow-pulse {
+  animation: glow-pulse 2s ease-in-out infinite;
+}
+
+/* Hologram effect */
+.hologram {
+  position: relative;
+}
+
+.hologram::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    rgba(0, 240, 255, 0.1) 50%,
+    transparent 100%
+  );
+  animation: scan 3s linear infinite;
+  pointer-events: none;
+}
+
+/* Matrix rain effect (for backgrounds) */
+@keyframes matrix-fall {
+  0% { transform: translateY(-100%); opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { transform: translateY(100vh); opacity: 0; }
+}
+
+.matrix-char {
+  animation: matrix-fall linear infinite;
+  color: #00F0FF;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* Loading spinner */
+.cyber-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid #1a1a1a;
+  border-top-color: #00F0FF;
+  border-radius: 0;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Selection color */
+::selection {
+  background: rgba(0, 240, 255, 0.3);
+  color: #fff;
+}
+
+/* Focus outline */
+*:focus-visible {
+  outline: 2px solid #00F0FF;
+  outline-offset: 2px;
+}
+
+/* Tooltip styles */
+.tooltip {
+  position: relative;
+}
+
+.tooltip::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0.5rem 1rem;
+  background: #0a0a0a;
+  border: 1px solid #00F0FF;
+  color: #00F0FF;
+  font-size: 0.75rem;
+  font-family: 'JetBrains Mono', monospace;
+  white-space: nowrap;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.2s;
+}
+
+.tooltip:hover::after {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* Responsive utilities */
+@media (max-width: 768px) {
+  .mobile-full {
+    width: 100%;
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+}
+
+/* Print styles */
+@media print {
+  .no-print {
+    display: none !important;
+  }
 }
