@@ -1,11 +1,8 @@
-import React, { useState, useEffect, useContext, createContext, useRef, Suspense, useMemo } from 'react';
+import React, { useState, useEffect, useContext, createContext, useRef, useMemo } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
 import Confetti from 'react-confetti';
-import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { OrbitControls, Text, Html, Stars, Float, Box, Sphere, Cylinder, useTexture } from '@react-three/drei';
-import * as THREE from 'three';
 import {
   Home, Map, Briefcase, Wallet, Vote, Trophy, User, LogOut, Menu, X, ChevronRight, 
   Coins, Star, Zap, Building2, Users, BookOpen, ShoppingBag, Settings, Globe,
