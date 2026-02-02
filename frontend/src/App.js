@@ -9,6 +9,7 @@ import { ConfettiProvider } from './context/ConfettiContext';
 // Common Components
 import Navbar from './components/common/Navbar';
 import ProtectedRoute from './components/common/ProtectedRoute';
+import DailyReward from './components/common/DailyReward';
 
 // Pages
 import {
@@ -32,6 +33,7 @@ import {
 const AppLayout = ({ children }) => (
   <div className="min-h-screen bg-black text-white scanlines noise">
     <Navbar />
+    <DailyReward />
     {children}
   </div>
 );
