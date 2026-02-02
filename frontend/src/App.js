@@ -46,12 +46,13 @@ function App() {
     <BrowserRouter>
       <LanguageProvider>
         <AuthProvider>
-          <ConfettiProvider>
-            <Routes>
-              {/* Public Routes */}
-              <Route path="/" element={<LandingPage />} />
-              <Route path="/login" element={<LoginPage />} />
-              <Route path="/register" element={<RegisterPage />} />
+          <Web3Provider>
+            <ConfettiProvider>
+              <Routes>
+                {/* Public Routes */}
+                <Route path="/" element={<LandingPage />} />
+                <Route path="/login" element={<LoginPage />} />
+                <Route path="/register" element={<RegisterPage />} />
               
               {/* Protected Routes */}
               <Route path="/dashboard" element={
