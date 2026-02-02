@@ -578,7 +578,7 @@ async def complete_job(job_id: str, current_user: dict = Depends(get_current_use
     if not active_job:
         raise HTTPException(status_code=404, detail="No active job found")
     
-    job = await db.jobs.find_one({"id": job_id})
+    job = await db.jobs.find_one({"id": job_id}, {"_id": 0})
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
     
