@@ -51,7 +51,12 @@ async def get_all_badges():
         {"id": "early_adopter", "name": "Early Adopter", "description": "Join in the first month", "icon": "🏅", "rarity": "legendary"},
         {"id": "contributor_star", "name": "Star Contributor", "description": "Top 10 in contributions", "icon": "⭐", "rarity": "legendary"},
         {"id": "creator_elite", "name": "Elite Creator", "description": "Create 20+ resources", "icon": "🎖️", "rarity": "legendary"},
-        {"id": "partner_network", "name": "Partner Network", "description": "Connect with 10 partners", "icon": "🤝", "rarity": "rare"}
+        {"id": "partner_network", "name": "Partner Network", "description": "Connect with 10 partners", "icon": "🤝", "rarity": "rare"},
+        # Daily reward badges
+        {"id": "daily_devotee", "name": "Daily Devotee", "description": "Claim your first daily reward", "icon": "📅", "rarity": "common"},
+        {"id": "week_warrior", "name": "Week Warrior", "description": "7 day login streak", "icon": "🔥", "rarity": "uncommon"},
+        {"id": "monthly_master", "name": "Monthly Master", "description": "30 day login streak", "icon": "🌙", "rarity": "rare"},
+        {"id": "century_champion", "name": "Century Champion", "description": "100 day login streak", "icon": "💯", "rarity": "legendary"}
     ]
     return {"badges": badges}
 
