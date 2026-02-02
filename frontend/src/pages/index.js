@@ -1,0 +1,14 @@
+export { default as LandingPage } from './LandingPage';
+export { default as LoginPage } from './LoginPage';
+export { default as RegisterPage } from './RegisterPage';
+export { default as DashboardPage } from './DashboardPage';
+export { default as MetaversePage } from './MetaversePage';
+export { default as JobsPage } from './JobsPage';
+export { default as CoursesPage } from './CoursesPage';
+export { default as MarketplacePage } from './MarketplacePage';
+export { default as VotingPage } from './VotingPage';
+export { default as WalletPage } from './WalletPage';
+export { default as LeaderboardPage } from './LeaderboardPage';
+export { default as ProfilePage } from './ProfilePage';
+export { default as SimulationPage } from './SimulationPage';
+export { default as ProjectsPage } from './ProjectsPage';
