@@ -56,7 +56,14 @@ async def get_all_badges():
         {"id": "daily_devotee", "name": "Daily Devotee", "description": "Claim your first daily reward", "icon": "📅", "rarity": "common"},
         {"id": "week_warrior", "name": "Week Warrior", "description": "7 day login streak", "icon": "🔥", "rarity": "uncommon"},
         {"id": "monthly_master", "name": "Monthly Master", "description": "30 day login streak", "icon": "🌙", "rarity": "rare"},
-        {"id": "century_champion", "name": "Century Champion", "description": "100 day login streak", "icon": "💯", "rarity": "legendary"}
+        {"id": "century_champion", "name": "Century Champion", "description": "100 day login streak", "icon": "💯", "rarity": "legendary"},
+        # Referral badges
+        {"id": "first_referral", "name": "First Referral", "description": "Complete your first referral", "icon": "🤗", "rarity": "common"},
+        {"id": "friendly_inviter", "name": "Friendly Inviter", "description": "5 successful referrals", "icon": "👋", "rarity": "uncommon"},
+        {"id": "social_butterfly", "name": "Social Butterfly", "description": "10 successful referrals", "icon": "🦋", "rarity": "rare"},
+        {"id": "community_builder", "name": "Community Builder", "description": "25 successful referrals", "icon": "🏗️", "rarity": "rare"},
+        {"id": "growth_champion", "name": "Growth Champion", "description": "50 successful referrals", "icon": "📈", "rarity": "legendary"},
+        {"id": "viral_legend", "name": "Viral Legend", "description": "100 successful referrals", "icon": "🌟", "rarity": "legendary"}
     ]
     return {"badges": badges}
 
