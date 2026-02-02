@@ -561,16 +561,45 @@ class Badge(BaseModel):
 async def get_all_badges():
     return {
         "badges": [
-            {"id": "newcomer", "name": "Newcomer", "description": "Welcome to REALUM!", "icon": "🌟", "rarity": "common"},
-            {"id": "first_job", "name": "First Job", "description": "Completed your first job", "icon": "💼", "rarity": "common"},
-            {"id": "worker_bee", "name": "Worker Bee", "description": "Completed 5 jobs", "icon": "🐝", "rarity": "uncommon"},
-            {"id": "job_master", "name": "Job Master", "description": "Completed 10 jobs", "icon": "👔", "rarity": "rare"},
-            {"id": "voter", "name": "Voter", "description": "Cast your first vote", "icon": "🗳️", "rarity": "common"},
-            {"id": "civic_voice", "name": "Civic Voice", "description": "Created a proposal", "icon": "📢", "rarity": "uncommon"},
-            {"id": "first_transaction", "name": "First Transaction", "description": "Made your first transfer", "icon": "💸", "rarity": "common"},
-            {"id": "web3_pioneer", "name": "Web3 Pioneer", "description": "Connected a Web3 wallet", "icon": "🔗", "rarity": "uncommon"},
-            {"id": "entrepreneur", "name": "Entrepreneur", "description": "Earned 10,000 REALUM", "icon": "💰", "rarity": "rare"},
-            {"id": "citizen_elite", "name": "Citizen Elite", "description": "Reached level 10", "icon": "👑", "rarity": "legendary"}
+            # Common Badges (Entry Level)
+            {"id": "newcomer", "name": "Newcomer", "description": "Welcome to REALUM! Your journey begins here.", "icon": "🌟", "rarity": "common"},
+            {"id": "first_job", "name": "First Salary", "description": "Completed your first job and earned your first REALUM", "icon": "💼", "rarity": "common"},
+            {"id": "voter", "name": "Voter", "description": "Cast your first vote in a DAO proposal", "icon": "🗳️", "rarity": "common"},
+            {"id": "first_transaction", "name": "First Transaction", "description": "Made your first REALUM transfer", "icon": "💸", "rarity": "common"},
+            {"id": "explorer", "name": "Explorer", "description": "Visited all city zones", "icon": "🧭", "rarity": "common"},
+            {"id": "debutant", "name": "Debutant", "description": "Completed your first task in the platform", "icon": "🎯", "rarity": "common"},
+            
+            # Uncommon Badges (Intermediate)
+            {"id": "worker_bee", "name": "Worker Bee", "description": "Completed 5 jobs across REALUM", "icon": "🐝", "rarity": "uncommon"},
+            {"id": "civic_voice", "name": "Civic Voice", "description": "Created your first DAO proposal", "icon": "📢", "rarity": "uncommon"},
+            {"id": "web3_pioneer", "name": "Web3 Pioneer", "description": "Connected a MetaMask wallet", "icon": "🔗", "rarity": "uncommon"},
+            {"id": "realum_pioneer", "name": "REALUM Pioneer", "description": "Early adopter badge for founding members", "icon": "🚀", "rarity": "uncommon"},
+            {"id": "mentor", "name": "Digital Mentor", "description": "Helped guide new users in the ecosystem", "icon": "🎓", "rarity": "uncommon"},
+            {"id": "decident_activ", "name": "Active Decider", "description": "Voted on 10+ proposals", "icon": "⚖️", "rarity": "uncommon"},
+            {"id": "beta_contributor", "name": "Beta Contributor", "description": "Participated in beta testing", "icon": "🧪", "rarity": "uncommon"},
+            {"id": "wallet_wizard", "name": "Wallet Wizard", "description": "Mastered the REALUM wallet features", "icon": "✨", "rarity": "uncommon"},
+            
+            # Rare Badges (Advanced)
+            {"id": "job_master", "name": "Job Master", "description": "Completed 10+ jobs with excellence", "icon": "👔", "rarity": "rare"},
+            {"id": "entrepreneur", "name": "Entrepreneur", "description": "Earned 10,000+ REALUM Coins", "icon": "💰", "rarity": "rare"},
+            {"id": "problem_solver", "name": "Problem Solver", "description": "Multiple accepted proposals", "icon": "💡", "rarity": "rare"},
+            {"id": "impact_maker", "name": "Impact Maker", "description": "Involvement in critical community sprints", "icon": "⚡", "rarity": "rare"},
+            {"id": "dao_educator", "name": "DAO Educator", "description": "Created guides or mentored others in DAO", "icon": "📚", "rarity": "rare"},
+            {"id": "code_commando", "name": "Code Commando", "description": "Completed technical tasks in Tech District", "icon": "💻", "rarity": "rare"},
+            {"id": "growth_booster", "name": "Growth Booster", "description": "Promoted campaigns and grew the community", "icon": "📈", "rarity": "rare"},
+            
+            # Epic Badges (Expert)
+            {"id": "core_builder", "name": "Core Builder", "description": "Long-term contributor to REALUM ecosystem", "icon": "🏗️", "rarity": "epic"},
+            {"id": "validator", "name": "Ethical Validator", "description": "Elected community validator", "icon": "✅", "rarity": "epic"},
+            {"id": "ambassador", "name": "Ambassador", "description": "Official REALUM community ambassador", "icon": "🌍", "rarity": "epic"},
+            {"id": "dao_architect", "name": "DAO Architect", "description": "Participated in major accepted proposals", "icon": "🏛️", "rarity": "epic"},
+            
+            # Legendary Badges (Elite)
+            {"id": "citizen_elite", "name": "Citizen Elite", "description": "Reached level 10 - maximum citizen status", "icon": "👑", "rarity": "legendary"},
+            {"id": "realum_og", "name": "REALUM OG", "description": "Founding member of the REALUM ecosystem", "icon": "🏆", "rarity": "legendary"},
+            {"id": "dao_founder", "name": "DAO Founder", "description": "Founding contributor to REALUM DAO", "icon": "⭐", "rarity": "legendary"},
+            {"id": "founding_strategist", "name": "Founding Strategist", "description": "Key strategic contributor since inception", "icon": "🎖️", "rarity": "legendary"},
+            {"id": "validator_senior", "name": "Senior Validator", "description": "Top-tier community validator status", "icon": "🛡️", "rarity": "legendary"}
         ]
     }
 
