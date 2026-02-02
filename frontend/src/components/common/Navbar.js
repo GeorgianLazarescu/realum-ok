@@ -5,8 +5,8 @@ import {
   Home, Briefcase, Wallet, Vote, Trophy, User, LogOut, Menu, X, 
   GraduationCap, Layers, ShoppingBag, Play
 } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
-import { useTranslation } from '../context/LanguageContext';
+import { useAuth } from '../../context/AuthContext';
+import { useTranslation } from '../../context/LanguageContext';
 import LanguageSelector from './LanguageSelector';
 
 const Navbar = () => {
