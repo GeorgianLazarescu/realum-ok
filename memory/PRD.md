@@ -177,14 +177,12 @@ backend/
 
 ## Remaining Work
 
-### P1 - High Priority
-- [ ] MetaMask wallet integration (button exists, logic needed)
-
-### P2 - Future
+### P1 - Future Enhancements
 - [ ] Full 3D metaverse with Three.js
 - [ ] Real blockchain integration (MultiversX/Polygon)
-- [ ] Mobile app
 - [ ] Video course content
+- [ ] Mobile app
+- [ ] Achievement notifications system
 
 ## Last Updated
-February 2, 2026 - Complete frontend and backend refactoring with modular architecture.
+February 2, 2026 - MetaMask/Web3 wallet integration, referral system, and daily rewards implemented.
