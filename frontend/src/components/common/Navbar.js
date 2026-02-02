@@ -70,6 +70,16 @@ const Navbar = () => {
               
               {user && (
                 <div className="hidden md:flex items-center gap-3 sm:gap-4">
+                  {/* Web3 Wallet Status */}
+                  {isConnected && (
+                    <Link 
+                      to="/wallet"
+                      className="px-2 py-1 bg-neon-green/10 border border-neon-green/30 text-neon-green text-xs font-mono flex items-center gap-1 hover:bg-neon-green/20"
+                    >
+                      <div className="w-1.5 h-1.5 bg-neon-green rounded-full" />
+                      {formatAddress(account)}
+                    </Link>
+                  )}
                   <div className="text-right">
                     <div className="text-sm font-mono text-neon-cyan">{user.realum_balance?.toFixed(0)} RLM</div>
                     <div className="text-xs text-white/50">Lv.{user.level}</div>
