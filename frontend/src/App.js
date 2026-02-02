@@ -1172,7 +1172,9 @@ const JobsPage = () => {
     "industrial": "#F9F871",
     "residential": "#00FF88",
     "education": "#9D4EDD",
-    "marketplace": "#FF6B35"
+    "marketplace": "#FF6B35",
+    "cultural": "#E040FB",
+    "civic": "#40C4FF"
   };
 
   return (
