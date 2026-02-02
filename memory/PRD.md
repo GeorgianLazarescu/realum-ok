@@ -81,6 +81,7 @@ backend/
 - ✅ Live token simulation (Andreea → Vlad → Sorin)
 - ✅ Fully responsive design (mobile + desktop)
 - ✅ Internationalization (EN/RO/ES)
+- ✅ **Daily login rewards with streak bonuses**
 
 ### Refactoring Results
 | Component | Before | After |
@@ -136,6 +137,11 @@ backend/
 - `POST /simulation/setup` - Initialize
 - `POST /simulation/step/{n}` - Run step
 - `GET /simulation/status` - Status
+
+### Daily Rewards
+- `GET /daily/status` - Get daily reward status
+- `POST /daily/claim` - Claim daily reward
+- `GET /daily/leaderboard` - Streak leaderboard
 
 ### Admin
 - `POST /seed` - Seed database
