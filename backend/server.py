@@ -626,9 +626,9 @@ async def complete_job(job_id: str, current_user: dict = Depends(get_current_use
     )
     
     # Update job and active job
-    await db.jobs.update_one({"id": job_id}, {"$set": {"status": "available"}})
+    # Jobs remain available for other users - only update the active_job record
     await db.active_jobs.update_one(
-        {"job_id": job_id, "user_id": current_user["id"]},
+        {"job_id": job_id, "user_id": current_user["id"], "status": "in_progress"},
         {"$set": {"status": "completed", "completed_at": now}}
     )
     
