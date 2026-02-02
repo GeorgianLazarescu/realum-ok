@@ -5,6 +5,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { LanguageProvider } from './context/LanguageContext';
 import { ConfettiProvider } from './context/ConfettiContext';
+import { Web3Provider } from './context/Web3Context';
 
 // Common Components
 import Navbar from './components/common/Navbar';
