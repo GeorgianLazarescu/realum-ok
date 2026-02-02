@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from ..core.database import db
+from core.database import db
 
 router = APIRouter(tags=["Stats & Leaderboard"])
 

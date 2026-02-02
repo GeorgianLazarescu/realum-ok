@@ -4,10 +4,10 @@ import jwt
 import bcrypt
 import uuid
 
-from ..core.database import db
-from ..core.config import SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_HOURS, INITIAL_BALANCE
-from ..core.auth import get_current_user
-from ..models.user import UserCreate, UserLogin, UserResponse, TokenResponse
+from core.database import db
+from core.config import SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_HOURS, INITIAL_BALANCE
+from core.auth import get_current_user
+from models.user import UserCreate, UserLogin, UserResponse, TokenResponse
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 

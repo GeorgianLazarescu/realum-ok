@@ -3,9 +3,9 @@ from typing import List, Optional
 from datetime import datetime, timezone
 import uuid
 
-from ..core.database import db
-from ..core.auth import get_current_user
-from ..services.token_service import add_xp, award_badge, create_transaction
+from core.database import db
+from core.auth import get_current_user
+from services.token_service import add_xp, award_badge, create_transaction
 
 router = APIRouter(prefix="/courses", tags=["Learning"])
 

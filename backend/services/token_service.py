@@ -1,5 +1,5 @@
-from ..core.database import db
-from ..core.config import TOKEN_BURN_RATE
+from core.database import db
+from core.config import TOKEN_BURN_RATE
 from datetime import datetime, timezone
 import uuid
 

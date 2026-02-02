@@ -2,7 +2,7 @@ from fastapi import APIRouter
 from datetime import datetime, timezone
 import uuid
 
-from ..core.database import db
+from core.database import db
 
 router = APIRouter(tags=["Admin"])
 

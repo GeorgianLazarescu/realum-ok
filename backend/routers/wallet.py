@@ -3,11 +3,11 @@ from typing import Optional
 from datetime import datetime, timezone
 import uuid
 
-from ..core.database import db
-from ..core.config import TOKEN_BURN_RATE
-from ..core.auth import get_current_user
-from ..models.user import WalletConnect, Transfer
-from ..services.token_service import burn_tokens, create_transaction, get_token_stats
+from core.database import db
+from core.config import TOKEN_BURN_RATE
+from core.auth import get_current_user
+from models.user import WalletConnect, Transfer
+from services.token_service import burn_tokens, create_transaction, get_token_stats
 
 router = APIRouter(prefix="/wallet", tags=["Wallet"])
 

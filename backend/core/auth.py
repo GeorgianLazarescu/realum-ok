@@ -1,8 +1,8 @@
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import jwt
-from .config import SECRET_KEY, ALGORITHM
-from .database import db
+from config import SECRET_KEY, ALGORITHM
+from database import db
 
 security = HTTPBearer(auto_error=False)
 

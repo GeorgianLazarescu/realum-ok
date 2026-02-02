@@ -3,10 +3,10 @@ from typing import List, Optional
 from datetime import datetime, timezone
 import uuid
 
-from ..core.database import db
-from ..core.auth import get_current_user
-from ..models.dao import Proposal, ProposalCreate, VoteRequest, CityZone
-from ..services.token_service import add_xp, award_badge
+from core.database import db
+from core.auth import get_current_user
+from models.dao import Proposal, ProposalCreate, VoteRequest, CityZone
+from services.token_service import add_xp, award_badge
 
 router = APIRouter(tags=["DAO & Governance"])
 

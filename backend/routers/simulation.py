@@ -3,9 +3,9 @@ from datetime import datetime, timezone
 import uuid
 import bcrypt
 
-from ..core.database import db
-from ..core.config import INITIAL_BALANCE, TOKEN_BURN_RATE
-from ..services.token_service import burn_tokens, create_transaction
+from core.database import db
+from core.config import INITIAL_BALANCE, TOKEN_BURN_RATE
+from services.token_service import burn_tokens, create_transaction
 
 router = APIRouter(prefix="/simulation", tags=["Simulation"])
 

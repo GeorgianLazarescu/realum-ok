@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field, ConfigDict, EmailStr
 from typing import List, Optional, Dict, Any
-from ..core.config import INITIAL_BALANCE
+from core.config import INITIAL_BALANCE
 
 class UserRole:
     CREATOR = "creator"

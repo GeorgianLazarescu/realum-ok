@@ -3,11 +3,11 @@ from typing import List, Optional
 from datetime import datetime, timezone
 import uuid
 
-from ..core.database import db
-from ..core.config import TOKEN_BURN_RATE
-from ..core.auth import get_current_user
-from ..models.marketplace import Job, MarketplaceItem, MarketplaceCreate
-from ..services.token_service import burn_tokens, create_transaction, add_xp, award_badge
+from core.database import db
+from core.config import TOKEN_BURN_RATE
+from core.auth import get_current_user
+from models.marketplace import Job, MarketplaceItem, MarketplaceCreate
+from services.token_service import burn_tokens, create_transaction, add_xp, award_badge
 
 router = APIRouter(tags=["Jobs & Marketplace"])
 
