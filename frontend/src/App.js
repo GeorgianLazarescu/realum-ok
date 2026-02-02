@@ -878,12 +878,25 @@ const CityMapPage = () => {
   }, []);
 
   const zonePositions = {
-    "downtown": { x: 50, y: 30 },
-    "tech-district": { x: 75, y: 45 },
-    "industrial": { x: 25, y: 60 },
-    "residential": { x: 70, y: 70 },
-    "education": { x: 30, y: 35 },
-    "marketplace": { x: 55, y: 65 }
+    "downtown": { x: 50, y: 25 },
+    "tech-district": { x: 78, y: 35 },
+    "industrial": { x: 20, y: 55 },
+    "residential": { x: 75, y: 70 },
+    "education": { x: 25, y: 30 },
+    "marketplace": { x: 55, y: 60 },
+    "cultural": { x: 40, y: 75 },
+    "civic": { x: 60, y: 40 }
+  };
+
+  const zoneIcons = {
+    "downtown": "🏛️",
+    "tech-district": "💻",
+    "industrial": "🏭",
+    "residential": "🏘️",
+    "education": "🎓",
+    "marketplace": "🛒",
+    "cultural": "🎭",
+    "civic": "⚖️"
   };
 
   return (
@@ -893,25 +906,30 @@ const CityMapPage = () => {
           <h1 className="text-3xl md:text-4xl font-orbitron font-black">
             CITY <span className="text-neon-cyan neon-text">MAP</span>
           </h1>
-          <p className="text-muted-foreground mt-2">Explore the different zones of REALUM</p>
+          <p className="text-muted-foreground mt-2">Explore the digital city of REALUM - navigate zones, find jobs, and build your future</p>
         </motion.div>
 
         <div className="grid lg:grid-cols-3 gap-6">
-          {/* Map */}
+          {/* Interactive Map */}
           <div className="lg:col-span-2">
             <CyberCard className="relative aspect-[4/3] overflow-hidden">
               {/* Grid Background */}
               <div className="absolute inset-0 bg-cyber-grid bg-[length:30px_30px] opacity-30" />
               
+              {/* Radial Glow */}
+              <div className="absolute inset-0 bg-hero-glow opacity-50" />
+              
               {/* Zone Markers */}
               {zones.map(zone => {
                 const pos = zonePositions[zone.id] || { x: 50, y: 50 };
+                const icon = zoneIcons[zone.id] || "🏢";
                 return (
                   <motion.button
                     key={zone.id}
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    whileHover={{ scale: 1.2 }}
+                    initial={{ scale: 0, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ delay: zones.indexOf(zone) * 0.1 }}
+                    whileHover={{ scale: 1.15 }}
                     onClick={() => setSelectedZone(zone)}
                     className={`absolute transform -translate-x-1/2 -translate-y-1/2 z-10 ${
                       selectedZone?.id === zone.id ? "z-20" : ""
@@ -920,20 +938,25 @@ const CityMapPage = () => {
                     data-testid={`zone-${zone.id}`}
                   >
                     <div 
-                      className={`w-16 h-16 border-2 flex items-center justify-center transition-all ${
+                      className={`w-16 h-16 md:w-20 md:h-20 border-2 flex items-center justify-center transition-all duration-300 ${
                         selectedZone?.id === zone.id 
-                          ? "border-white bg-white/20 shadow-[0_0_30px_rgba(255,255,255,0.5)]" 
+                          ? "border-white bg-white/20 scale-110" 
                           : "border-opacity-50 hover:border-opacity-100"
                       }`}
                       style={{ 
                         borderColor: zone.color,
-                        boxShadow: selectedZone?.id === zone.id ? `0 0 30px ${zone.color}` : `0 0 15px ${zone.color}40`
+                        boxShadow: selectedZone?.id === zone.id 
+                          ? `0 0 40px ${zone.color}, inset 0 0 20px ${zone.color}30` 
+                          : `0 0 20px ${zone.color}40`
                       }}
                     >
-                      <Building2 className="w-6 h-6" style={{ color: zone.color }} />
+                      <span className="text-2xl md:text-3xl">{icon}</span>
                     </div>
                     <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 whitespace-nowrap">
-                      <span className="text-xs font-mono uppercase px-2 py-1 bg-black/80" style={{ color: zone.color }}>
+                      <span 
+                        className="text-xs font-mono uppercase px-2 py-1 bg-black/90 border border-white/20"
+                        style={{ color: zone.color }}
+                      >
                         {zone.name}
                       </span>
                     </div>
@@ -941,54 +964,72 @@ const CityMapPage = () => {
                 );
               })}
 
-              {/* Connection Lines */}
+              {/* Connection Lines SVG */}
               <svg className="absolute inset-0 w-full h-full pointer-events-none">
                 <defs>
                   <linearGradient id="lineGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                    <stop offset="0%" stopColor="#00F0FF" stopOpacity="0.2" />
-                    <stop offset="50%" stopColor="#00F0FF" stopOpacity="0.5" />
-                    <stop offset="100%" stopColor="#00F0FF" stopOpacity="0.2" />
+                    <stop offset="0%" stopColor="#00F0FF" stopOpacity="0.1" />
+                    <stop offset="50%" stopColor="#00F0FF" stopOpacity="0.4" />
+                    <stop offset="100%" stopColor="#00F0FF" stopOpacity="0.1" />
                   </linearGradient>
                 </defs>
-                <line x1="50%" y1="30%" x2="75%" y2="45%" stroke="url(#lineGradient)" strokeWidth="1" />
-                <line x1="50%" y1="30%" x2="30%" y2="35%" stroke="url(#lineGradient)" strokeWidth="1" />
-                <line x1="75%" y1="45%" x2="70%" y2="70%" stroke="url(#lineGradient)" strokeWidth="1" />
-                <line x1="25%" y1="60%" x2="55%" y2="65%" stroke="url(#lineGradient)" strokeWidth="1" />
-                <line x1="55%" y1="65%" x2="70%" y2="70%" stroke="url(#lineGradient)" strokeWidth="1" />
+                {/* Central Hub Connections */}
+                <line x1="50%" y1="25%" x2="78%" y2="35%" stroke="url(#lineGradient)" strokeWidth="1" />
+                <line x1="50%" y1="25%" x2="25%" y2="30%" stroke="url(#lineGradient)" strokeWidth="1" />
+                <line x1="50%" y1="25%" x2="60%" y2="40%" stroke="url(#lineGradient)" strokeWidth="1" />
+                <line x1="78%" y1="35%" x2="75%" y2="70%" stroke="url(#lineGradient)" strokeWidth="1" />
+                <line x1="20%" y1="55%" x2="40%" y2="75%" stroke="url(#lineGradient)" strokeWidth="1" />
+                <line x1="55%" y1="60%" x2="75%" y2="70%" stroke="url(#lineGradient)" strokeWidth="1" />
+                <line x1="55%" y1="60%" x2="40%" y2="75%" stroke="url(#lineGradient)" strokeWidth="1" />
+                <line x1="60%" y1="40%" x2="55%" y2="60%" stroke="url(#lineGradient)" strokeWidth="1" />
+                <line x1="25%" y1="30%" x2="20%" y2="55%" stroke="url(#lineGradient)" strokeWidth="1" />
               </svg>
+
+              {/* Map Legend */}
+              <div className="absolute bottom-4 left-4 text-xs font-mono text-muted-foreground bg-black/80 p-2 border border-white/10">
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="w-2 h-2 bg-neon-cyan rounded-full animate-pulse" />
+                  <span>INTERACTIVE ZONES</span>
+                </div>
+                <span className="text-[10px]">Click a zone to explore</span>
+              </div>
             </CyberCard>
           </div>
 
-          {/* Zone Info */}
+          {/* Zone Info Panel */}
           <div>
-            <CyberCard className="h-full">
+            <CyberCard className="h-full min-h-[400px]">
               {selectedZone ? (
                 <motion.div
                   key={selectedZone.id}
                   initial={{ opacity: 0, x: 20 }}
                   animate={{ opacity: 1, x: 0 }}
+                  className="h-full flex flex-col"
                 >
                   <div className="flex items-center gap-3 mb-4">
                     <div 
-                      className="w-12 h-12 border-2 flex items-center justify-center"
-                      style={{ borderColor: selectedZone.color }}
+                      className="w-14 h-14 border-2 flex items-center justify-center"
+                      style={{ 
+                        borderColor: selectedZone.color,
+                        boxShadow: `0 0 20px ${selectedZone.color}40`
+                      }}
                     >
-                      <Building2 className="w-6 h-6" style={{ color: selectedZone.color }} />
+                      <span className="text-2xl">{zoneIcons[selectedZone.id] || "🏢"}</span>
                     </div>
                     <div>
                       <h3 className="font-orbitron font-bold text-lg" style={{ color: selectedZone.color }}>
                         {selectedZone.name}
                       </h3>
-                      <span className="text-xs uppercase tracking-wider text-muted-foreground">{selectedZone.type}</span>
+                      <span className="text-xs uppercase tracking-wider text-muted-foreground">{selectedZone.type} zone</span>
                     </div>
                   </div>
                   
-                  <p className="text-muted-foreground mb-6">{selectedZone.description}</p>
+                  <p className="text-muted-foreground mb-4 text-sm">{selectedZone.description}</p>
                   
-                  <div className="space-y-4">
-                    <div className="flex justify-between text-sm">
+                  <div className="space-y-4 flex-1">
+                    <div className="flex justify-between text-sm p-2 border border-white/10 bg-black/30">
                       <span className="text-muted-foreground">Available Jobs</span>
-                      <span className="font-mono" style={{ color: selectedZone.color }}>{selectedZone.jobs_count}</span>
+                      <span className="font-mono font-bold" style={{ color: selectedZone.color }}>{selectedZone.jobs_count}</span>
                     </div>
                     
                     <div>
@@ -1001,43 +1042,65 @@ const CityMapPage = () => {
                         ))}
                       </div>
                     </div>
+
+                    {selectedZone.features && selectedZone.features.length > 0 && (
+                      <div>
+                        <span className="text-xs uppercase tracking-wider text-muted-foreground">Features</span>
+                        <div className="mt-2 space-y-1">
+                          {selectedZone.features.map((feature, i) => (
+                            <div key={i} className="flex items-center gap-2 text-xs">
+                              <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: selectedZone.color }} />
+                              <span className="text-muted-foreground">{feature}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                   
                   <CyberButton 
-                    className="w-full mt-6"
+                    className="w-full mt-4"
                     onClick={() => navigate(`/jobs?zone=${selectedZone.id}`)}
                   >
-                    Explore Zone
+                    <span className="flex items-center justify-center gap-2">
+                      Find Jobs <ChevronRight className="w-4 h-4" />
+                    </span>
                   </CyberButton>
                 </motion.div>
               ) : (
-                <div className="h-full flex flex-col items-center justify-center text-center">
-                  <Map className="w-12 h-12 text-muted-foreground mb-4" />
-                  <p className="text-muted-foreground">Select a zone on the map to view details</p>
+                <div className="h-full flex flex-col items-center justify-center text-center py-8">
+                  <Map className="w-16 h-16 text-muted-foreground mb-4 opacity-50" />
+                  <p className="text-muted-foreground font-mono">SELECT A ZONE</p>
+                  <p className="text-xs text-muted-foreground mt-2">Click on a zone marker on the map to view details</p>
                 </div>
               )}
             </CyberCard>
           </div>
         </div>
 
-        {/* Zone List */}
-        <div className="mt-8 grid md:grid-cols-3 gap-4">
+        {/* Zone Grid */}
+        <div className="mt-8 grid grid-cols-2 md:grid-cols-4 gap-4">
           {zones.map(zone => (
-            <button
+            <motion.button
               key={zone.id}
+              whileHover={{ scale: 1.02 }}
               onClick={() => setSelectedZone(zone)}
               className={`p-4 border text-left transition-all ${
                 selectedZone?.id === zone.id 
                   ? "border-white/50 bg-white/5" 
                   : "border-white/10 hover:border-white/30"
               }`}
+              style={{ borderLeftColor: zone.color, borderLeftWidth: "3px" }}
             >
-              <div className="flex items-center gap-3">
-                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: zone.color }} />
-                <span className="font-mono uppercase">{zone.name}</span>
-                <span className="ml-auto text-xs text-muted-foreground">{zone.jobs_count} jobs</span>
+              <div className="flex items-center gap-3 mb-2">
+                <span className="text-xl">{zoneIcons[zone.id] || "🏢"}</span>
+                <span className="font-mono uppercase text-sm" style={{ color: zone.color }}>{zone.name}</span>
               </div>
-            </button>
+              <div className="flex justify-between text-xs text-muted-foreground">
+                <span>{zone.type}</span>
+                <span>{zone.jobs_count} jobs</span>
+              </div>
+            </motion.button>
           ))}
         </div>
       </div>
