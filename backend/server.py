@@ -517,7 +517,7 @@ async def get_jobs(zone: Optional[str] = None, role: Optional[str] = None):
 
 @api_router.post("/jobs/{job_id}/apply")
 async def apply_for_job(job_id: str, current_user: dict = Depends(get_current_user)):
-    job = await db.jobs.find_one({"id": job_id})
+    job = await db.jobs.find_one({"id": job_id}, {"_id": 0})
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
     
