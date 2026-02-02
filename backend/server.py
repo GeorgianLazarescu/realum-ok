@@ -12,6 +12,7 @@ from routers.projects import router as projects_router
 from routers.simulation import router as simulation_router
 from routers.stats import router as stats_router
 from routers.admin import router as admin_router
+from routers.daily import router as daily_router
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -44,6 +45,7 @@ app.include_router(projects_router, prefix="/api")
 app.include_router(simulation_router, prefix="/api")
 app.include_router(stats_router, prefix="/api")
 app.include_router(admin_router, prefix="/api")
+app.include_router(daily_router, prefix="/api")
 
 @app.get("/")
 async def root():
