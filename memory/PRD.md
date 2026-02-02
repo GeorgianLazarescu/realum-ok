@@ -82,6 +82,7 @@ backend/
 - ✅ Fully responsive design (mobile + desktop)
 - ✅ Internationalization (EN/RO/ES)
 - ✅ **Daily login rewards with streak bonuses**
+- ✅ **Referral program with viral rewards**
 
 ### Refactoring Results
 | Component | Before | After |
@@ -142,6 +143,13 @@ backend/
 - `GET /daily/status` - Get daily reward status
 - `POST /daily/claim` - Claim daily reward
 - `GET /daily/leaderboard` - Streak leaderboard
+
+### Referral System
+- `GET /referral/code` - Get/generate referral code
+- `GET /referral/stats` - Get referral statistics
+- `POST /referral/apply` - Apply a referral code
+- `POST /referral/check-completion` - Check referral completion
+- `GET /referral/leaderboard` - Top referrers
 
 ### Admin
 - `POST /seed` - Seed database
