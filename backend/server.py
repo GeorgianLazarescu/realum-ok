@@ -532,6 +532,7 @@ class CityZone(BaseModel):
     jobs_count: int
     buildings: List[str]
     color: str
+    features: List[str] = []
 
 @api_router.get("/city/zones", response_model=List[CityZone])
 async def get_city_zones():
@@ -539,12 +540,14 @@ async def get_city_zones():
     if not zones:
         # Return default zones if none exist
         return [
-            CityZone(id="downtown", name="Downtown", description="The heart of REALUM - business and finance hub", type="commercial", jobs_count=12, buildings=["City Hall", "REALUM Bank", "Trade Center"], color="#00F0FF"),
-            CityZone(id="tech-district", name="Tech District", description="Innovation and technology sector", type="tech", jobs_count=8, buildings=["Tech Hub", "Data Center", "Startup Garage"], color="#FF003C"),
-            CityZone(id="industrial", name="Industrial Zone", description="Manufacturing and production facilities", type="industrial", jobs_count=15, buildings=["Factory A", "Warehouse", "Power Plant"], color="#F9F871"),
-            CityZone(id="residential", name="Residential Area", description="Living quarters and community spaces", type="residential", jobs_count=5, buildings=["Apartments", "Community Center", "Park"], color="#00FF88"),
-            CityZone(id="education", name="Education Campus", description="Learning and research institutions", type="education", jobs_count=6, buildings=["University", "Library", "Research Lab"], color="#9D4EDD"),
-            CityZone(id="marketplace", name="Marketplace", description="Trading and commerce district", type="commerce", jobs_count=10, buildings=["Grand Bazaar", "Auction House", "NFT Gallery"], color="#FF6B35")
+            CityZone(id="downtown", name="Downtown", description="The administrative and financial heart of REALUM", type="commercial", jobs_count=8, buildings=["City Hall", "REALUM Bank", "Trade Center", "DAO Council Chamber", "Treasury Building"], color="#00F0FF", features=["Virtual Administration", "Simulated Taxes", "Company Registration"]),
+            CityZone(id="tech-district", name="Tech District", description="Innovation and technology hub", type="tech", jobs_count=10, buildings=["Tech Hub", "Data Center", "Startup Garage", "AI Research Center", "Smart Contract Lab"], color="#FF003C", features=["Smart Contracts", "AI Assistants", "Blockchain Integration"]),
+            CityZone(id="industrial", name="Industrial Zone", description="Manufacturing and production facilities", type="industrial", jobs_count=8, buildings=["Factory Alpha", "Central Warehouse", "Power Plant", "Logistics Hub", "Recycling Center"], color="#F9F871", features=["Production Economy", "Supply Chain", "Energy Grid"]),
+            CityZone(id="residential", name="Residential District", description="Living quarters and community spaces", type="residential", jobs_count=8, buildings=["Citizen Apartments", "Community Center", "Central Park", "Wellness Hub", "Ambassador Hub"], color="#00FF88", features=["Social Connections", "Health & Wellness", "Community Events"]),
+            CityZone(id="education", name="Education Campus", description="Learning and research institutions", type="education", jobs_count=10, buildings=["REALUM University", "City Library", "Research Lab", "Virtual Academy", "Skill Center"], color="#9D4EDD", features=["Gamified Learning", "Skill Certification", "Research Projects"]),
+            CityZone(id="marketplace", name="Marketplace", description="Digital commerce and creator economy", type="commerce", jobs_count=10, buildings=["Grand Bazaar", "NFT Gallery", "Auction House", "Creator Studio", "Digital Mall"], color="#FF6B35", features=["NFT Trading", "Digital Assets", "Creator Economy"]),
+            CityZone(id="cultural", name="Cultural Quarter", description="Museums, exhibition halls, and virtual events", type="cultural", jobs_count=6, buildings=["Digital Museum", "Exhibition Hall", "Concert Arena", "Art Gallery", "Heritage Center"], color="#E040FB", features=["Virtual Events", "Digital Art", "Cultural NFTs"]),
+            CityZone(id="civic", name="Civic Center", description="Citizen engagement and participatory governance", type="civic", jobs_count=5, buildings=["Agora Forum", "Voting Center", "Citizen Bureau", "Ethics Council", "Public Square"], color="#40C4FF", features=["DAO Governance", "Public Voting", "Civic Participation"])
         ]
     return [CityZone(**z) for z in zones]
 
