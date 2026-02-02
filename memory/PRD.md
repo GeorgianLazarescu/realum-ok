@@ -83,6 +83,7 @@ backend/
 - ✅ Internationalization (EN/RO/ES)
 - ✅ **Daily login rewards with streak bonuses**
 - ✅ **Referral program with viral rewards**
+- ✅ **MetaMask/Web3 wallet integration**
 
 ### Refactoring Results
 | Component | Before | After |
