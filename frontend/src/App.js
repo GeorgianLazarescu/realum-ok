@@ -1049,105 +1049,150 @@ const DashboardPage = () => {
   ];
   
   return (
-    <div className="min-h-screen pt-20 pb-12 px-4" data-testid="dashboard">
+    <div className="min-h-screen pt-16 sm:pt-20 pb-20 lg:pb-12 px-3 sm:px-4" data-testid="dashboard">
       <div className="max-w-7xl mx-auto">
-        {/* Welcome Section */}
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
-          <h1 className="text-3xl md:text-4xl font-orbitron font-black mb-2">
-            {t('welcome')}, <span className="text-neon-cyan">{user?.username}</span>
+        {/* Welcome Section - Mobile optimized */}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-6 sm:mb-8">
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-orbitron font-black mb-2 leading-tight">
+            {t('welcome')}, <span className="text-neon-cyan block sm:inline">{user?.username}</span>
           </h1>
-          <p className="text-white/60 flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 text-sm">
             <span 
               className="px-2 py-1 text-xs border uppercase"
               style={{ borderColor: roleColors[user?.role], color: roleColors[user?.role] }}
             >
               {user?.role}
             </span>
-            <span>Member since {new Date(user?.created_at).toLocaleDateString()}</span>
-          </p>
+            <span className="text-white/60 text-xs sm:text-sm">Member since {new Date(user?.created_at).toLocaleDateString()}</span>
+          </div>
         </motion.div>
         
-        <div className="grid lg:grid-cols-3 gap-6">
-          {/* User Stats */}
-          <div className="lg:col-span-2 space-y-6">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <CyberCard className="text-center">
-                <Coins className="w-8 h-8 mx-auto mb-2 text-neon-cyan" />
-                <div className="text-2xl font-orbitron font-bold text-neon-cyan">{user?.realum_balance?.toFixed(0)}</div>
-                <div className="text-xs text-white/50 uppercase">RLM {t('balance')}</div>
-              </CyberCard>
-              
-              <CyberCard className="text-center">
-                <Zap className="w-8 h-8 mx-auto mb-2 text-neon-purple" />
-                <div className="text-2xl font-orbitron font-bold text-neon-purple">{user?.xp || 0}</div>
-                <div className="text-xs text-white/50 uppercase">{t('xp')}</div>
-              </CyberCard>
-              
-              <CyberCard className="text-center">
-                <Star className="w-8 h-8 mx-auto mb-2 text-neon-yellow" />
-                <div className="text-2xl font-orbitron font-bold text-neon-yellow">{user?.level || 1}</div>
-                <div className="text-xs text-white/50 uppercase">{t('level')}</div>
-              </CyberCard>
-              
-              <CyberCard className="text-center">
-                <Award className="w-8 h-8 mx-auto mb-2 text-neon-green" />
-                <div className="text-2xl font-orbitron font-bold text-neon-green">{user?.badges?.length || 0}</div>
-                <div className="text-xs text-white/50 uppercase">{t('badges')}</div>
-              </CyberCard>
-            </div>
-            
-            {/* Quick Actions */}
-            <CyberCard>
-              <h3 className="font-orbitron font-bold mb-4">Quick Actions</h3>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+        {/* Stats Grid - Mobile first */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4 mb-6">
+          <CyberCard className="text-center p-3 sm:p-6">
+            <Coins className="w-6 h-6 sm:w-8 sm:h-8 mx-auto mb-1 sm:mb-2 text-neon-cyan" />
+            <div className="text-xl sm:text-2xl font-orbitron font-bold text-neon-cyan">{user?.realum_balance?.toFixed(0)}</div>
+            <div className="text-[10px] sm:text-xs text-white/50 uppercase">RLM</div>
+          </CyberCard>
+          
+          <CyberCard className="text-center p-3 sm:p-6">
+            <Zap className="w-6 h-6 sm:w-8 sm:h-8 mx-auto mb-1 sm:mb-2 text-neon-purple" />
+            <div className="text-xl sm:text-2xl font-orbitron font-bold text-neon-purple">{user?.xp || 0}</div>
+            <div className="text-[10px] sm:text-xs text-white/50 uppercase">{t('xp')}</div>
+          </CyberCard>
+          
+          <CyberCard className="text-center p-3 sm:p-6">
+            <Star className="w-6 h-6 sm:w-8 sm:h-8 mx-auto mb-1 sm:mb-2 text-neon-yellow" />
+            <div className="text-xl sm:text-2xl font-orbitron font-bold text-neon-yellow">{user?.level || 1}</div>
+            <div className="text-[10px] sm:text-xs text-white/50 uppercase">{t('level')}</div>
+          </CyberCard>
+          
+          <CyberCard className="text-center p-3 sm:p-6">
+            <Award className="w-6 h-6 sm:w-8 sm:h-8 mx-auto mb-1 sm:mb-2 text-neon-green" />
+            <div className="text-xl sm:text-2xl font-orbitron font-bold text-neon-green">{user?.badges?.length || 0}</div>
+            <div className="text-[10px] sm:text-xs text-white/50 uppercase">{t('badges')}</div>
+          </CyberCard>
+        </div>
+        
+        <div className="grid lg:grid-cols-3 gap-4 sm:gap-6">
+          {/* Main Content */}
+          <div className="lg:col-span-2 space-y-4 sm:space-y-6">
+            {/* Quick Actions - Mobile Grid */}
+            <CyberCard className="p-4 sm:p-6">
+              <h3 className="font-orbitron font-bold mb-3 sm:mb-4 text-sm sm:text-base">Quick Actions</h3>
+              <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-6 gap-2 sm:gap-3">
                 {quickActions.map(action => (
                   <motion.button
                     key={action.path}
                     whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
                     onClick={() => navigate(action.path)}
-                    className="p-4 border border-white/10 hover:border-white/30 transition-all text-left"
+                    className="p-3 sm:p-4 border border-white/10 hover:border-white/30 active:bg-white/5 transition-all text-center sm:text-left flex flex-col items-center sm:items-start"
                   >
-                    <action.icon className="w-6 h-6 mb-2" style={{ color: action.color }} />
-                    <span className="text-sm font-mono">{action.label}</span>
+                    <action.icon className="w-5 h-5 sm:w-6 sm:h-6 mb-1 sm:mb-2" style={{ color: action.color }} />
+                    <span className="text-[10px] sm:text-sm font-mono">{action.label}</span>
                   </motion.button>
                 ))}
               </div>
             </CyberCard>
             
-            {/* Token Economy */}
+            {/* Token Economy - Responsive */}
             {tokenStats && (
-              <CyberCard>
-                <h3 className="font-orbitron font-bold mb-4 flex items-center gap-2">
-                  <TrendingUp className="w-5 h-5 text-neon-cyan" />
+              <CyberCard className="p-4 sm:p-6">
+                <h3 className="font-orbitron font-bold mb-3 sm:mb-4 flex items-center gap-2 text-sm sm:text-base">
+                  <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-neon-cyan" />
                   Token Economy
                 </h3>
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="p-3 bg-black/30 border border-white/10">
-                    <div className="text-xs text-white/50 mb-1">{t('totalSupply')}</div>
-                    <div className="font-mono text-neon-cyan">{tokenStats.total_supply?.toFixed(0)} RLM</div>
+                <div className="grid grid-cols-3 gap-2 sm:gap-4">
+                  <div className="p-2 sm:p-3 bg-black/30 border border-white/10">
+                    <div className="text-[10px] sm:text-xs text-white/50 mb-1">{t('totalSupply')}</div>
+                    <div className="font-mono text-xs sm:text-base text-neon-cyan">{tokenStats.total_supply?.toFixed(0)}</div>
                   </div>
-                  <div className="p-3 bg-black/30 border border-white/10">
-                    <div className="text-xs text-white/50 mb-1">{t('tokensBurned')}</div>
-                    <div className="font-mono text-neon-red">{tokenStats.total_burned?.toFixed(2)} RLM</div>
+                  <div className="p-2 sm:p-3 bg-black/30 border border-white/10">
+                    <div className="text-[10px] sm:text-xs text-white/50 mb-1">{t('tokensBurned')}</div>
+                    <div className="font-mono text-xs sm:text-base text-neon-red">{tokenStats.total_burned?.toFixed(1)}</div>
                   </div>
-                  <div className="p-3 bg-black/30 border border-white/10">
-                    <div className="text-xs text-white/50 mb-1">{t('burnRate')}</div>
-                    <div className="font-mono text-neon-yellow">{tokenStats.burn_rate}%</div>
+                  <div className="p-2 sm:p-3 bg-black/30 border border-white/10">
+                    <div className="text-[10px] sm:text-xs text-white/50 mb-1">{t('burnRate')}</div>
+                    <div className="font-mono text-xs sm:text-base text-neon-yellow">{tokenStats.burn_rate}%</div>
                   </div>
                 </div>
               </CyberCard>
             )}
           </div>
           
-          {/* Sidebar */}
-          <div className="space-y-6">
+          {/* Sidebar - Collapses on mobile */}
+          <div className="space-y-4 sm:space-y-6">
             {/* Platform Stats */}
             {stats && (
-              <CyberCard>
-                <h3 className="font-orbitron font-bold mb-4">Platform Stats</h3>
-                <div className="space-y-3">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-white/50">Total Users</span>
+              <CyberCard className="p-4 sm:p-6">
+                <h3 className="font-orbitron font-bold mb-3 sm:mb-4 text-sm sm:text-base">Platform Stats</h3>
+                <div className="grid grid-cols-2 lg:grid-cols-1 gap-2 sm:gap-3">
+                  <div className="flex justify-between text-xs sm:text-sm p-2 bg-black/20">
+                    <span className="text-white/50">Users</span>
+                    <span className="font-mono text-neon-cyan">{stats.total_users}</span>
+                  </div>
+                  <div className="flex justify-between text-xs sm:text-sm p-2 bg-black/20">
+                    <span className="text-white/50">Jobs Done</span>
+                    <span className="font-mono text-neon-green">{stats.jobs_completed}</span>
+                  </div>
+                  <div className="flex justify-between text-xs sm:text-sm p-2 bg-black/20">
+                    <span className="text-white/50">Proposals</span>
+                    <span className="font-mono text-neon-purple">{stats.active_proposals}</span>
+                  </div>
+                  <div className="flex justify-between text-xs sm:text-sm p-2 bg-black/20">
+                    <span className="text-white/50">Courses</span>
+                    <span className="font-mono text-neon-yellow">{stats.courses_available}</span>
+                  </div>
+                </div>
+              </CyberCard>
+            )}
+            
+            {/* Badges Preview */}
+            <CyberCard className="p-4 sm:p-6">
+              <h3 className="font-orbitron font-bold mb-3 sm:mb-4 text-sm sm:text-base">Your Badges</h3>
+              <div className="flex flex-wrap gap-2">
+                {user?.badges?.slice(0, 6).map(badge => (
+                  <div key={badge} className="w-9 h-9 sm:w-10 sm:h-10 bg-neon-cyan/10 border border-neon-cyan/30 flex items-center justify-center">
+                    <span className="text-base sm:text-lg">🏆</span>
+                  </div>
+                ))}
+                {user?.badges?.length > 6 && (
+                  <Link to="/profile" className="w-9 h-9 sm:w-10 sm:h-10 bg-white/5 border border-white/20 flex items-center justify-center text-xs text-white/50">
+                    +{user.badges.length - 6}
+                  </Link>
+                )}
+              </div>
+              <Link to="/profile" className="text-xs text-neon-cyan hover:underline mt-3 block">
+                View all badges →
+              </Link>
+            </CyberCard>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
                     <span className="font-mono text-neon-cyan">{stats.total_users}</span>
                   </div>
                   <div className="flex justify-between text-sm">
