@@ -1,0 +1,151 @@
+{
+  "identity": {
+    "name": "REALUM",
+    "persona": "E1: The Anti-AI Designer",
+    "tone": "Futuristic, Dystopian-Chic, High-Fidelity, Immersive",
+    "aesthetic": "Cyberpunk 2077 meets DeFi Dashboard. Neon accents on deep void backgrounds. Glitch effects. Terminal aesthetics.",
+    "audience": "Gen Z, Gamers, Crypto Natives, Students (14-35)"
+  },
+  "typography": {
+    "font_family": {
+      "headings": "Orbitron, sans-serif",
+      "body": "Rajdhani, sans-serif",
+      "mono": "JetBrains Mono, monospace"
+    },
+    "weights": {
+      "headings": "900",
+      "body": "500",
+      "mono": "400"
+    },
+    "scale": {
+      "h1": "text-6xl md:text-8xl tracking-tighter uppercase",
+      "h2": "text-4xl md:text-5xl tracking-tight uppercase",
+      "h3": "text-2xl md:text-3xl font-bold uppercase tracking-widest",
+      "body": "text-base md:text-lg leading-relaxed",
+      "caption": "text-xs font-mono tracking-widest uppercase text-muted-foreground"
+    },
+    "imports": [
+      "https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;500;700&family=JetBrains+Mono:wght@400;700&display=swap"
+    ]
+  },
+  "colors": {
+    "palette": {
+      "background": "#050505",
+      "foreground": "#E0E0E0",
+      "card": "#0A0A0A",
+      "card_foreground": "#FFFFFF",
+      "primary": "#00F0FF",
+      "primary_foreground": "#000000",
+      "secondary": "#FF003C",
+      "secondary_foreground": "#FFFFFF",
+      "accent": "#F9F871",
+      "accent_foreground": "#000000",
+      "muted": "#1A1A1A",
+      "muted_foreground": "#888888",
+      "border": "#333333",
+      "input": "#1A1A1A",
+      "ring": "#00F0FF"
+    },
+    "gradients": {
+      "hero_glow": "radial-gradient(circle at center, rgba(0, 240, 255, 0.15) 0%, rgba(0, 0, 0, 0) 70%)",
+      "neon_border": "linear-gradient(90deg, transparent, #00F0FF, transparent)",
+      "glitch_overlay": "linear-gradient(transparent 50%, rgba(0, 240, 255, 0.05) 50%)"
+    },
+    "usage_rules": {
+      "primary": "Use for Main CTAs, Active States, and Key Data Highlights.",
+      "secondary": "Use for Alerts, 'Delete' actions, and Negative trends.",
+      "accent": "Use sparingly for 'New' badges or special achievements.",
+      "background": "NEVER use pure black (#000000). Use #050505 or #0A0A0A."
+    }
+  },
+  "layout": {
+    "grid_system": {
+      "marketing": "The Tetris Grid (Mode A). Asymmetrical, overlapping, chaotic but balanced.",
+      "dashboard": "The Bento Grid (Mode B). Dense, 100% height utilization, no gaps."
+    },
+    "spacing": {
+      "container_padding": "p-6 md:p-12 lg:p-24",
+      "element_gap": "gap-4 md:gap-8",
+      "section_spacing": "py-24 md:py-32"
+    },
+    "containers": {
+      "card_style": "Sharp edges (rounded-none or rounded-sm). 1px border with 'neon-glow' effect on hover.",
+      "glass_effect": "backdrop-blur-xl bg-black/60 border border-white/10"
+    }
+  },
+  "components": {
+    "buttons": {
+      "primary": "bg-primary text-black font-black uppercase tracking-widest hover:bg-primary/80 hover:shadow-[0_0_20px_rgba(0,240,255,0.5)] transition-all duration-300 clip-path-angled",
+      "secondary": "border border-primary/50 text-primary hover:bg-primary/10 uppercase tracking-widest",
+      "ghost": "text-muted-foreground hover:text-white hover:bg-white/5"
+    },
+    "inputs": {
+      "style": "bg-black/50 border-white/20 focus:border-primary focus:ring-1 focus:ring-primary rounded-none font-mono text-sm"
+    },
+    "cards": {
+      "base": "bg-card border border-border relative overflow-hidden group",
+      "hover": "group-hover:border-primary/50 transition-colors duration-300"
+    },
+    "navigation": {
+      "style": "Fixed top, glassmorphism, 1px bottom border (border-white/10). Logo left, Links right (mono font)."
+    }
+  },
+  "visual_enhancers": {
+    "textures": [
+      "Scanlines (CSS repeating-linear-gradient)",
+      "Noise overlay (opacity 0.05)",
+      "Vignette (radial-gradient)"
+    ],
+    "decorations": [
+      "Corner brackets (SVG) on cards",
+      "Glowing dots/grid points in background",
+      "Marquee text (scrolling background text)"
+    ],
+    "motion": {
+      "hover": "Glitch effect (rapid translate-x)",
+      "scroll": "Lenis smooth scroll (MANDATORY)",
+      "loading": "Terminal typing effect or ASCII spinner"
+    }
+  },
+  "media": {
+    "image_style": "High contrast, desaturated with neon color grading. Apply 'mix-blend-mode: luminosity' if image is too colorful, then overlay a gradient.",
+    "image_urls": {
+      "hero_bg": "https://images.unsplash.com/photo-1758404196311-70c62a445e9c?crop=entropy&cs=srgb&fm=jpg&q=85",
+      "city_texture": "https://images.unsplash.com/photo-1709996165626-7f9fbd981aba?crop=entropy&cs=srgb&fm=jpg&q=85",
+      "avatar_anonymous": "https://images.unsplash.com/photo-1715615751025-e7ebe7f47eea?crop=entropy&cs=srgb&fm=jpg&q=85",
+      "avatar_citizen": "https://images.unsplash.com/photo-1622025118596-971bac0b1cde?crop=entropy&cs=srgb&fm=jpg&q=85",
+      "coin_icon": "https://images.pexels.com/photos/8830900/pexels-photo-8830900.jpeg"
+    }
+  },
+  "libraries": {
+    "charts": "Recharts (customized with neon strokes and dark tooltips)",
+    "maps": "React Map GL (Dark Mode custom style) or simple SVG interactive map for MVP",
+    "3d": "React Three Fiber (for Hero Coin only)",
+    "icons": "Lucide React (default), Phosphor Icons (for bold weight)",
+    "animations": "Framer Motion (layout transitions), Lenis (smooth scroll)"
+  },
+  "universal_guidelines": {
+    "anti_patterns": [
+      "NO gradients on text unless it's a very subtle shine.",
+      "NO rounded-xl or rounded-2xl. Keep it sharp (rounded-sm or rounded-none).",
+      "NO center alignment for main content. Use asymmetry.",
+      "NO 'Inter' font for headings."
+    ],
+    "accessibility": {
+      "contrast": "Ensure neon text is readable against black. Use text-shadow if needed.",
+      "reduced_motion": "Disable glitch effects if prefers-reduced-motion is true."
+    },
+    "testing": {
+      "attribute": "data-testid",
+      "format": "kebab-case (e.g., 'hero-cta-button')"
+    }
+  },
+  "instructions_to_main_agent": [
+    "1. INSTALL FONTS: Add the Google Fonts import to index.css immediately.",
+    "2. SETUP THEME: Update tailwind.config.js with the specific colors provided in 'colors.palette'.",
+    "3. CREATE LAYOUT: Build a 'CyberpunkLayout' component that includes the noise texture and scanlines overlay.",
+    "4. BUILD COMPONENTS: Customize Shadcn components to remove rounded corners and add neon border effects.",
+    "5. IMPLEMENT PAGES: Follow the 'Tetris Grid' for Landing and 'Bento Grid' for Dashboard.",
+    "6. USE IMAGES: Use the provided image_urls for placeholders. Do not leave empty images."
+  ]
+}
