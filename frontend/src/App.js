@@ -1123,7 +1123,7 @@ const DashboardPage = () => {
   );
 };
 
-// 3D Metaverse Page
+// 2.5D Isometric Metaverse Page
 const MetaversePage = () => {
   const t = useTranslation();
   const navigate = useNavigate();
@@ -1138,45 +1138,87 @@ const MetaversePage = () => {
   
   return (
     <div className="min-h-screen pt-16" data-testid="metaverse-page">
-      <div className="h-[calc(100vh-64px)] relative">
-        {/* 3D Canvas */}
-        <Canvas camera={{ position: [0, 60, 100], fov: 60 }}>
-          <Suspense fallback={null}>
-            <MetaverseScene 
-              zones={zones} 
-              projects={projects}
-              onSelectZone={setSelectedZone}
-              selectedZone={selectedZone}
-            />
-          </Suspense>
-        </Canvas>
+      <div className="h-[calc(100vh-64px)] relative overflow-hidden bg-[#0a0a1a]">
+        {/* Animated Background Grid */}
+        <div className="absolute inset-0 bg-cyber-grid bg-[length:40px_40px] opacity-20" />
+        <div className="absolute inset-0 bg-hero-glow opacity-30" />
         
-        {/* UI Overlay */}
-        <div className="absolute top-4 left-4 right-4 pointer-events-none">
-          <div className="flex justify-between items-start">
-            <div className="pointer-events-auto">
-              <h1 className="text-2xl font-orbitron font-black text-white drop-shadow-lg">
-                REALUM <span className="text-neon-cyan">{t('metaverse')}</span>
-              </h1>
-              <p className="text-sm text-white/60">Click zones to explore • Scroll to zoom</p>
+        {/* Floating Stars/Particles */}
+        <div className="absolute inset-0 overflow-hidden">
+          {[...Array(30)].map((_, i) => (
+            <motion.div
+              key={i}
+              className="absolute w-1 h-1 bg-neon-cyan rounded-full"
+              initial={{ 
+                x: Math.random() * window.innerWidth, 
+                y: Math.random() * window.innerHeight,
+                opacity: 0.2 + Math.random() * 0.5
+              }}
+              animate={{ 
+                y: [null, -20, 0],
+                opacity: [null, 0.8, 0.2 + Math.random() * 0.5]
+              }}
+              transition={{ 
+                duration: 3 + Math.random() * 3, 
+                repeat: Infinity,
+                delay: Math.random() * 2
+              }}
+            />
+          ))}
+        </div>
+        
+        {/* Header */}
+        <div className="absolute top-4 left-4 right-4 z-20 flex justify-between items-start">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-orbitron font-black text-white">
+              REALUM <span className="text-neon-cyan neon-text">{t('metaverse')}</span>
+            </h1>
+            <p className="text-sm text-white/60">Explore the city • Click zones to view details</p>
+          </div>
+          
+          {/* Zone Legend */}
+          <div className="bg-black/80 border border-white/20 p-3 backdrop-blur hidden md:block">
+            <div className="text-xs font-mono text-white/50 mb-2">CITY ZONES</div>
+            <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+              {zones.map(zone => (
+                <button 
+                  key={zone.id}
+                  className="flex items-center gap-2 text-xs hover:opacity-80 text-left"
+                  onClick={() => setSelectedZone(zone)}
+                >
+                  <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: zone.color }} />
+                  <span className="text-white/70 truncate">{zone.name}</span>
+                </button>
+              ))}
             </div>
+          </div>
+        </div>
+        
+        {/* Isometric Map Container */}
+        <div className="absolute inset-0 pt-20" style={{ perspective: '1000px' }}>
+          <div 
+            className="relative w-full h-full"
+            style={{ transform: 'rotateX(0deg)' }}
+          >
+            {/* Zone Islands */}
+            {zones.map((zone, index) => (
+              <IsometricZone
+                key={zone.id}
+                zone={zone}
+                index={index}
+                onClick={() => setSelectedZone(zone)}
+                selected={selectedZone?.id === zone.id}
+              />
+            ))}
             
-            {/* Mini Map Legend */}
-            <div className="pointer-events-auto bg-black/80 border border-white/20 p-3 backdrop-blur">
-              <div className="text-xs font-mono text-white/50 mb-2">ZONES</div>
-              <div className="space-y-1">
-                {zones.slice(0, 5).map(zone => (
-                  <div 
-                    key={zone.id}
-                    className="flex items-center gap-2 text-xs cursor-pointer hover:opacity-80"
-                    onClick={() => setSelectedZone(zone)}
-                  >
-                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: zone.color }} />
-                    <span className="text-white/70">{zone.name}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
+            {/* Floating Projects */}
+            {projects.slice(0, 5).map((project, index) => (
+              <FloatingProject
+                key={project.id}
+                project={project}
+                index={index}
+              />
+            ))}
           </div>
         </div>
         
@@ -1187,17 +1229,18 @@ const MetaversePage = () => {
               initial={{ opacity: 0, x: 100 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 100 }}
-              className="absolute bottom-4 right-4 w-80 bg-black/90 border border-white/20 p-4 pointer-events-auto"
+              className="absolute bottom-4 right-4 w-80 bg-black/95 border p-4 z-30"
+              style={{ borderColor: selectedZone.color }}
             >
               <div className="flex justify-between items-start mb-3">
                 <div>
-                  <h3 className="font-orbitron font-bold" style={{ color: selectedZone.color }}>
+                  <h3 className="font-orbitron font-bold text-lg" style={{ color: selectedZone.color }}>
                     {selectedZone.name}
                   </h3>
-                  <span className="text-xs text-white/50 uppercase">{selectedZone.type}</span>
+                  <span className="text-xs text-white/50 uppercase">{selectedZone.type} zone</span>
                 </div>
                 <button onClick={() => setSelectedZone(null)} className="text-white/50 hover:text-white">
-                  <X className="w-4 h-4" />
+                  <X className="w-5 h-5" />
                 </button>
               </div>
               
@@ -1206,27 +1249,41 @@ const MetaversePage = () => {
               <div className="grid grid-cols-2 gap-2 mb-4">
                 <div className="p-2 bg-white/5 border border-white/10">
                   <div className="text-xs text-white/50">Jobs</div>
-                  <div className="font-mono" style={{ color: selectedZone.color }}>{selectedZone.jobs_count}</div>
+                  <div className="font-mono text-lg" style={{ color: selectedZone.color }}>{selectedZone.jobs_count}</div>
                 </div>
                 <div className="p-2 bg-white/5 border border-white/10">
                   <div className="text-xs text-white/50">Buildings</div>
-                  <div className="font-mono" style={{ color: selectedZone.color }}>{selectedZone.buildings?.length || 0}</div>
+                  <div className="font-mono text-lg" style={{ color: selectedZone.color }}>{selectedZone.buildings?.length || 0}</div>
                 </div>
               </div>
               
-              {selectedZone.features && (
+              {selectedZone.buildings && (
+                <div className="mb-4">
+                  <div className="text-xs text-white/50 mb-2">Key Locations</div>
+                  <div className="flex flex-wrap gap-1">
+                    {selectedZone.buildings.slice(0, 4).map((b, i) => (
+                      <span key={i} className="text-[10px] px-2 py-1 bg-white/5 border border-white/10">{b}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {selectedZone.features?.length > 0 && (
                 <div className="mb-4">
                   <div className="text-xs text-white/50 mb-2">Features</div>
-                  <div className="flex flex-wrap gap-1">
+                  <div className="space-y-1">
                     {selectedZone.features.map((f, i) => (
-                      <span key={i} className="text-[10px] px-2 py-1 bg-white/5 border border-white/10">{f}</span>
+                      <div key={i} className="flex items-center gap-2 text-xs">
+                        <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: selectedZone.color }} />
+                        <span className="text-white/70">{f}</span>
+                      </div>
                     ))}
                   </div>
                 </div>
               )}
               
               <CyberButton 
-                className="w-full text-sm"
+                className="w-full"
                 onClick={() => navigate(`/jobs?zone=${selectedZone.id}`)}
               >
                 Explore Jobs <ChevronRight className="w-4 h-4 inline ml-1" />
@@ -1234,6 +1291,18 @@ const MetaversePage = () => {
             </motion.div>
           )}
         </AnimatePresence>
+        
+        {/* Bottom Stats Bar */}
+        <div className="absolute bottom-4 left-4 flex gap-3">
+          <div className="bg-black/80 border border-white/20 px-3 py-2 text-xs">
+            <span className="text-white/50">Zones:</span>{' '}
+            <span className="text-neon-cyan font-mono">{zones.length}</span>
+          </div>
+          <div className="bg-black/80 border border-white/20 px-3 py-2 text-xs">
+            <span className="text-white/50">Projects:</span>{' '}
+            <span className="text-neon-purple font-mono">{projects.length}</span>
+          </div>
+        </div>
       </div>
     </div>
   );
