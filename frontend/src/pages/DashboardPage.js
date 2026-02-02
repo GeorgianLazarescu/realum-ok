@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
   Coins, Zap, Star, Award, Briefcase, GraduationCap, ShoppingBag, 
-  Layers, Vote, Building2, TrendingUp
+  Layers, Vote, Building2, TrendingUp, Users
 } from 'lucide-react';
 import axios from 'axios';
 import { API } from '../utils/api';
@@ -37,7 +37,7 @@ const DashboardPage = () => {
     { label: t('marketplace'), icon: ShoppingBag, path: '/marketplace', color: '#FF6B35' },
     { label: t('metaverse'), icon: Layers, path: '/metaverse', color: '#00F0FF' },
     { label: t('voting'), icon: Vote, path: '/voting', color: '#40C4FF' },
-    { label: t('projects'), icon: Building2, path: '/projects', color: '#00FF88' }
+    { label: 'Referral', icon: Users, path: '/referral', color: '#00FF88' }
   ];
   
   return (
