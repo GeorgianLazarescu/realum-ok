@@ -521,8 +521,14 @@ async def apply_for_job(job_id: str, current_user: dict = Depends(get_current_us
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
     
-    if job["status"] != "available":
-        raise HTTPException(status_code=400, detail="Job not available")
+    # Check if user already has this job active
+    existing_active = await db.active_jobs.find_one({
+        "job_id": job_id,
+        "user_id": current_user["id"],
+        "status": "in_progress"
+    })
+    if existing_active:
+        raise HTTPException(status_code=400, detail="You already have this job in progress")
     
     if job.get("required_level", 1) > current_user.get("level", 1):
         raise HTTPException(status_code=400, detail=f"Requires level {job['required_level']}")
@@ -532,7 +538,7 @@ async def apply_for_job(job_id: str, current_user: dict = Depends(get_current_us
     
     now = datetime.now(timezone.utc).isoformat()
     
-    # Create active job
+    # Create active job for this user
     await db.active_jobs.insert_one({
         "id": str(uuid.uuid4()),
         "job_id": job_id,
@@ -541,8 +547,8 @@ async def apply_for_job(job_id: str, current_user: dict = Depends(get_current_us
         "status": "in_progress"
     })
     
-    # Update job status
-    await db.jobs.update_one({"id": job_id}, {"$set": {"status": "in_progress"}})
+    # Jobs are reusable - don't change job status to in_progress
+    # This allows multiple users to take the same job
     
     return {"status": "applied", "job": job}
 
