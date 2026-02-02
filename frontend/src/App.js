@@ -920,7 +920,7 @@ const CityMapPage = () => {
               <div className="absolute inset-0 bg-hero-glow opacity-50" />
               
               {/* Zone Markers */}
-              {zones.map(zone => {
+              {zones.map((zone, idx) => {
                 const pos = zonePositions[zone.id] || { x: 50, y: 50 };
                 const icon = zoneIcons[zone.id] || "🏢";
                 return (
@@ -928,7 +928,7 @@ const CityMapPage = () => {
                     key={zone.id}
                     initial={{ scale: 0, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
-                    transition={{ delay: zones.indexOf(zone) * 0.1 }}
+                    transition={{ delay: idx * 0.1 }}
                     whileHover={{ scale: 1.15 }}
                     onClick={() => setSelectedZone(zone)}
                     className={`absolute transform -translate-x-1/2 -translate-y-1/2 z-10 ${
