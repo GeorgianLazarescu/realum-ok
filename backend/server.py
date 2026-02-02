@@ -598,48 +598,153 @@ async def get_platform_stats():
 
 @api_router.post("/seed")
 async def seed_data():
-    # Seed jobs
+    # Seed comprehensive jobs from the REALUM document
     jobs = [
-        {"id": "job-1", "title": "Data Entry Clerk", "description": "Process citizen registration forms", "company": "City Hall", "zone": "downtown", "reward": 50, "xp_reward": 15, "duration_minutes": 30, "required_level": 1, "status": "available"},
-        {"id": "job-2", "title": "Security Guard", "description": "Patrol the tech district", "company": "SecureTech", "zone": "tech-district", "reward": 75, "xp_reward": 20, "duration_minutes": 60, "required_level": 1, "status": "available"},
-        {"id": "job-3", "title": "Factory Worker", "description": "Operate machinery at Factory A", "company": "REALUM Industries", "zone": "industrial", "reward": 100, "xp_reward": 30, "duration_minutes": 120, "required_level": 1, "status": "available"},
-        {"id": "job-4", "title": "Junior Developer", "description": "Debug code at the Tech Hub", "company": "CodeForge", "zone": "tech-district", "reward": 150, "xp_reward": 50, "duration_minutes": 90, "required_level": 2, "status": "available"},
-        {"id": "job-5", "title": "Bank Teller", "description": "Handle transactions at REALUM Bank", "company": "REALUM Bank", "zone": "downtown", "reward": 80, "xp_reward": 25, "duration_minutes": 45, "required_level": 1, "status": "available"},
-        {"id": "job-6", "title": "Research Assistant", "description": "Assist with experiments at Research Lab", "company": "REALUM University", "zone": "education", "reward": 120, "xp_reward": 40, "duration_minutes": 60, "required_level": 2, "status": "available"},
-        {"id": "job-7", "title": "Market Vendor", "description": "Sell goods at the Grand Bazaar", "company": "Self-employed", "zone": "marketplace", "reward": 60, "xp_reward": 18, "duration_minutes": 30, "required_level": 1, "status": "available"},
-        {"id": "job-8", "title": "Community Manager", "description": "Organize events at Community Center", "company": "City Council", "zone": "residential", "reward": 90, "xp_reward": 35, "duration_minutes": 75, "required_level": 2, "status": "available"},
-        {"id": "job-9", "title": "Senior Engineer", "description": "Lead development at Data Center", "company": "REALUM Tech", "zone": "tech-district", "reward": 250, "xp_reward": 80, "duration_minutes": 180, "required_level": 3, "status": "available"},
-        {"id": "job-10", "title": "NFT Artist", "description": "Create digital art for NFT Gallery", "company": "CryptoArt Studios", "zone": "marketplace", "reward": 200, "xp_reward": 60, "duration_minutes": 120, "required_level": 2, "status": "available"},
-        {"id": "job-11", "title": "Power Plant Operator", "description": "Monitor energy production", "company": "REALUM Energy", "zone": "industrial", "reward": 180, "xp_reward": 55, "duration_minutes": 150, "required_level": 3, "status": "available"},
-        {"id": "job-12", "title": "Librarian", "description": "Organize digital archives", "company": "City Library", "zone": "education", "reward": 70, "xp_reward": 22, "duration_minutes": 40, "required_level": 1, "status": "available"}
+        # Downtown Jobs
+        {"id": "job-1", "title": "Data Entry Clerk", "description": "Process citizen registration forms at City Hall", "company": "City Hall", "zone": "downtown", "reward": 50, "xp_reward": 15, "duration_minutes": 30, "required_level": 1, "status": "available"},
+        {"id": "job-2", "title": "Bank Teller", "description": "Handle REALUM Coin transactions and citizen accounts", "company": "REALUM Bank", "zone": "downtown", "reward": 80, "xp_reward": 25, "duration_minutes": 45, "required_level": 1, "status": "available"},
+        {"id": "job-3", "title": "Trade Analyst", "description": "Analyze market trends and economic data", "company": "Trade Center", "zone": "downtown", "reward": 150, "xp_reward": 50, "duration_minutes": 90, "required_level": 2, "status": "available"},
+        {"id": "job-4", "title": "City Administrator", "description": "Manage municipal services and citizen requests", "company": "City Hall", "zone": "downtown", "reward": 200, "xp_reward": 70, "duration_minutes": 120, "required_level": 3, "status": "available"},
+        
+        # Tech District Jobs
+        {"id": "job-5", "title": "Junior Developer", "description": "Debug code and fix bugs at the Tech Hub", "company": "CodeForge", "zone": "tech-district", "reward": 150, "xp_reward": 50, "duration_minutes": 90, "required_level": 2, "status": "available"},
+        {"id": "job-6", "title": "Senior Engineer", "description": "Lead development projects at the Data Center", "company": "REALUM Tech", "zone": "tech-district", "reward": 300, "xp_reward": 100, "duration_minutes": 180, "required_level": 4, "status": "available"},
+        {"id": "job-7", "title": "Security Guard", "description": "Patrol and secure the tech infrastructure", "company": "SecureTech", "zone": "tech-district", "reward": 75, "xp_reward": 20, "duration_minutes": 60, "required_level": 1, "status": "available"},
+        {"id": "job-8", "title": "Startup Founder Assistant", "description": "Help entrepreneurs launch their ventures", "company": "Startup Garage", "zone": "tech-district", "reward": 120, "xp_reward": 40, "duration_minutes": 75, "required_level": 2, "status": "available"},
+        {"id": "job-9", "title": "Smart Contract Auditor", "description": "Review and audit blockchain smart contracts", "company": "REALUM DAO", "zone": "tech-district", "reward": 250, "xp_reward": 85, "duration_minutes": 150, "required_level": 3, "status": "available"},
+        
+        # Industrial Zone Jobs
+        {"id": "job-10", "title": "Factory Worker", "description": "Operate machinery and production lines", "company": "REALUM Industries", "zone": "industrial", "reward": 100, "xp_reward": 30, "duration_minutes": 120, "required_level": 1, "status": "available"},
+        {"id": "job-11", "title": "Warehouse Manager", "description": "Manage inventory and logistics operations", "company": "Central Warehouse", "zone": "industrial", "reward": 140, "xp_reward": 45, "duration_minutes": 90, "required_level": 2, "status": "available"},
+        {"id": "job-12", "title": "Power Plant Operator", "description": "Monitor and control energy production systems", "company": "REALUM Energy", "zone": "industrial", "reward": 180, "xp_reward": 60, "duration_minutes": 150, "required_level": 3, "status": "available"},
+        {"id": "job-13", "title": "Quality Inspector", "description": "Ensure products meet quality standards", "company": "REALUM Industries", "zone": "industrial", "reward": 110, "xp_reward": 35, "duration_minutes": 60, "required_level": 2, "status": "available"},
+        
+        # Residential Area Jobs
+        {"id": "job-14", "title": "Community Manager", "description": "Organize events and manage community spaces", "company": "Community Center", "zone": "residential", "reward": 90, "xp_reward": 35, "duration_minutes": 75, "required_level": 2, "status": "available"},
+        {"id": "job-15", "title": "Park Maintenance", "description": "Maintain green spaces and recreational areas", "company": "Parks Department", "zone": "residential", "reward": 60, "xp_reward": 18, "duration_minutes": 45, "required_level": 1, "status": "available"},
+        {"id": "job-16", "title": "Wellness Coach", "description": "Guide residents in health and fitness programs", "company": "Wellness Hub", "zone": "residential", "reward": 100, "xp_reward": 32, "duration_minutes": 60, "required_level": 2, "status": "available"},
+        {"id": "job-17", "title": "Social Worker", "description": "Support citizens with social services and guidance", "company": "Community Center", "zone": "residential", "reward": 130, "xp_reward": 45, "duration_minutes": 90, "required_level": 2, "status": "available"},
+        
+        # Education Campus Jobs
+        {"id": "job-18", "title": "Research Assistant", "description": "Assist professors with research experiments", "company": "REALUM University", "zone": "education", "reward": 120, "xp_reward": 40, "duration_minutes": 60, "required_level": 2, "status": "available"},
+        {"id": "job-19", "title": "Librarian", "description": "Organize and manage digital archives and resources", "company": "City Library", "zone": "education", "reward": 70, "xp_reward": 22, "duration_minutes": 40, "required_level": 1, "status": "available"},
+        {"id": "job-20", "title": "Teaching Assistant", "description": "Support students in virtual learning environments", "company": "REALUM University", "zone": "education", "reward": 95, "xp_reward": 30, "duration_minutes": 60, "required_level": 1, "status": "available"},
+        {"id": "job-21", "title": "Lab Technician", "description": "Maintain and operate research equipment", "company": "Research Lab", "zone": "education", "reward": 140, "xp_reward": 48, "duration_minutes": 90, "required_level": 2, "status": "available"},
+        {"id": "job-22", "title": "Course Creator", "description": "Design gamified educational content", "company": "REALUM Learn", "zone": "education", "reward": 200, "xp_reward": 70, "duration_minutes": 120, "required_level": 3, "status": "available"},
+        
+        # Marketplace Jobs
+        {"id": "job-23", "title": "Market Vendor", "description": "Sell goods and services at the Grand Bazaar", "company": "Self-employed", "zone": "marketplace", "reward": 60, "xp_reward": 18, "duration_minutes": 30, "required_level": 1, "status": "available"},
+        {"id": "job-24", "title": "NFT Artist", "description": "Create and mint digital art for the NFT Gallery", "company": "CryptoArt Studios", "zone": "marketplace", "reward": 200, "xp_reward": 65, "duration_minutes": 120, "required_level": 2, "status": "available"},
+        {"id": "job-25", "title": "Auction Manager", "description": "Host and manage digital asset auctions", "company": "Auction House", "zone": "marketplace", "reward": 175, "xp_reward": 55, "duration_minutes": 90, "required_level": 3, "status": "available"},
+        {"id": "job-26", "title": "Content Creator", "description": "Produce engaging digital content for the platform", "company": "Creator Network", "zone": "marketplace", "reward": 150, "xp_reward": 50, "duration_minutes": 90, "required_level": 2, "status": "available"},
+        {"id": "job-27", "title": "Freelance Designer", "description": "Create UI elements, avatars, and digital assets", "company": "REALUM Creators", "zone": "marketplace", "reward": 180, "xp_reward": 60, "duration_minutes": 100, "required_level": 2, "status": "available"},
+        
+        # Special/Cross-Zone Jobs
+        {"id": "job-28", "title": "DAO Validator", "description": "Verify proposals and ensure governance integrity", "company": "REALUM DAO", "zone": "downtown", "reward": 250, "xp_reward": 90, "duration_minutes": 120, "required_level": 4, "status": "available"},
+        {"id": "job-29", "title": "Community Ambassador", "description": "Represent REALUM and onboard new citizens", "company": "Ambassador Hub", "zone": "residential", "reward": 160, "xp_reward": 55, "duration_minutes": 90, "required_level": 3, "status": "available"},
+        {"id": "job-30", "title": "Mentor", "description": "Guide new users through the REALUM ecosystem", "company": "Mentorship Network", "zone": "education", "reward": 140, "xp_reward": 50, "duration_minutes": 75, "required_level": 3, "status": "available"}
     ]
     
     for job in jobs:
         await db.jobs.update_one({"id": job["id"]}, {"$set": job}, upsert=True)
     
-    # Seed zones
+    # Seed comprehensive zones with thematic buildings from document
     zones = [
-        {"id": "downtown", "name": "Downtown", "description": "The heart of REALUM - business and finance hub", "type": "commercial", "jobs_count": 12, "buildings": ["City Hall", "REALUM Bank", "Trade Center"], "color": "#00F0FF"},
-        {"id": "tech-district", "name": "Tech District", "description": "Innovation and technology sector", "type": "tech", "jobs_count": 8, "buildings": ["Tech Hub", "Data Center", "Startup Garage"], "color": "#FF003C"},
-        {"id": "industrial", "name": "Industrial Zone", "description": "Manufacturing and production facilities", "type": "industrial", "jobs_count": 15, "buildings": ["Factory A", "Warehouse", "Power Plant"], "color": "#F9F871"},
-        {"id": "residential", "name": "Residential Area", "description": "Living quarters and community spaces", "type": "residential", "jobs_count": 5, "buildings": ["Apartments", "Community Center", "Park"], "color": "#00FF88"},
-        {"id": "education", "name": "Education Campus", "description": "Learning and research institutions", "type": "education", "jobs_count": 6, "buildings": ["University", "Library", "Research Lab"], "color": "#9D4EDD"},
-        {"id": "marketplace", "name": "Marketplace", "description": "Trading and commerce district", "type": "commerce", "jobs_count": 10, "buildings": ["Grand Bazaar", "Auction House", "NFT Gallery"], "color": "#FF6B35"}
+        {
+            "id": "downtown",
+            "name": "Downtown",
+            "description": "The administrative and financial heart of REALUM - home to government, banking, and business institutions",
+            "type": "commercial",
+            "jobs_count": 8,
+            "buildings": ["City Hall", "REALUM Bank", "Trade Center", "DAO Council Chamber", "Treasury Building"],
+            "color": "#00F0FF",
+            "features": ["Virtual Administration", "Simulated Taxes", "Company Registration"]
+        },
+        {
+            "id": "tech-district",
+            "name": "Tech District",
+            "description": "Innovation and technology hub - startups, data centers, and blockchain infrastructure",
+            "type": "tech",
+            "jobs_count": 10,
+            "buildings": ["Tech Hub", "Data Center", "Startup Garage", "AI Research Center", "Smart Contract Lab"],
+            "color": "#FF003C",
+            "features": ["Smart Contracts", "AI Assistants", "Blockchain Integration"]
+        },
+        {
+            "id": "industrial",
+            "name": "Industrial Zone",
+            "description": "Manufacturing, production, and energy generation facilities powering the REALUM economy",
+            "type": "industrial",
+            "jobs_count": 8,
+            "buildings": ["Factory Alpha", "Central Warehouse", "Power Plant", "Logistics Hub", "Recycling Center"],
+            "color": "#F9F871",
+            "features": ["Production Economy", "Supply Chain", "Energy Grid"]
+        },
+        {
+            "id": "residential",
+            "name": "Residential District",
+            "description": "Living quarters, wellness centers, and community spaces for REALUM citizens",
+            "type": "residential",
+            "jobs_count": 8,
+            "buildings": ["Citizen Apartments", "Community Center", "Central Park", "Wellness Hub", "Ambassador Hub"],
+            "color": "#00FF88",
+            "features": ["Social Connections", "Health & Wellness", "Community Events"]
+        },
+        {
+            "id": "education",
+            "name": "Education Campus",
+            "description": "Virtual universities, libraries, and research institutions for learning and skill development",
+            "type": "education",
+            "jobs_count": 10,
+            "buildings": ["REALUM University", "City Library", "Research Lab", "Virtual Academy", "Skill Center"],
+            "color": "#9D4EDD",
+            "features": ["Gamified Learning", "Skill Certification", "Research Projects"]
+        },
+        {
+            "id": "marketplace",
+            "name": "Marketplace",
+            "description": "Digital commerce, NFT galleries, and creator economy district for trading and creativity",
+            "type": "commerce",
+            "jobs_count": 10,
+            "buildings": ["Grand Bazaar", "NFT Gallery", "Auction House", "Creator Studio", "Digital Mall"],
+            "color": "#FF6B35",
+            "features": ["NFT Trading", "Digital Assets", "Creator Economy"]
+        },
+        {
+            "id": "cultural",
+            "name": "Cultural Quarter",
+            "description": "Museums, exhibition halls, and virtual event spaces celebrating art and heritage",
+            "type": "cultural",
+            "jobs_count": 6,
+            "buildings": ["Digital Museum", "Exhibition Hall", "Concert Arena", "Art Gallery", "Heritage Center"],
+            "color": "#E040FB",
+            "features": ["Virtual Events", "Digital Art", "Cultural NFTs"]
+        },
+        {
+            "id": "civic",
+            "name": "Civic Center",
+            "description": "Citizen engagement, voting facilities, and participatory governance spaces",
+            "type": "civic",
+            "jobs_count": 5,
+            "buildings": ["Agora Forum", "Voting Center", "Citizen Bureau", "Ethics Council", "Public Square"],
+            "color": "#40C4FF",
+            "features": ["DAO Governance", "Public Voting", "Civic Participation"]
+        }
     ]
     
     for zone in zones:
         await db.zones.update_one({"id": zone["id"]}, {"$set": zone}, upsert=True)
     
-    # Seed proposals
+    # Seed comprehensive proposals from document themes
     proposals = [
         {
             "id": "prop-1",
             "title": "Increase Worker Minimum Wage",
-            "description": "Proposal to increase the minimum job reward from 50 to 75 REALUM Coin for all entry-level positions.",
+            "description": "Proposal to increase the minimum job reward from 50 to 75 REALUM Coin for all entry-level positions, ensuring fair compensation for all citizens.",
             "proposer_id": "system",
             "proposer_name": "City Council",
-            "votes_for": 42,
-            "votes_against": 18,
+            "votes_for": 142,
+            "votes_against": 38,
             "voters": [],
             "status": "active",
             "created_at": datetime.now(timezone.utc).isoformat(),
@@ -648,11 +753,11 @@ async def seed_data():
         {
             "id": "prop-2",
             "title": "Build New Tech Innovation Center",
-            "description": "Allocate 50,000 REALUM from the treasury to construct a new innovation center in the Tech District.",
+            "description": "Allocate 50,000 REALUM from the treasury to construct a new innovation center in the Tech District, creating 20 new jobs and boosting technological advancement.",
             "proposer_id": "system",
             "proposer_name": "Tech Committee",
-            "votes_for": 67,
-            "votes_against": 23,
+            "votes_for": 167,
+            "votes_against": 43,
             "voters": [],
             "status": "active",
             "created_at": datetime.now(timezone.utc).isoformat(),
@@ -661,15 +766,67 @@ async def seed_data():
         {
             "id": "prop-3",
             "title": "Environmental Protection Act",
-            "description": "Implement green initiatives across all industrial zones to reduce carbon footprint by 30%.",
+            "description": "Implement green initiatives across all industrial zones to reduce carbon footprint by 30%. Includes carbon token rewards for eco-friendly activities.",
             "proposer_id": "system",
             "proposer_name": "Green Party",
-            "votes_for": 89,
-            "votes_against": 11,
+            "votes_for": 189,
+            "votes_against": 21,
             "voters": [],
             "status": "active",
             "created_at": datetime.now(timezone.utc).isoformat(),
             "ends_at": (datetime.now(timezone.utc) + timedelta(days=7)).isoformat()
+        },
+        {
+            "id": "prop-4",
+            "title": "REALUM Learn Expansion",
+            "description": "Fund the creation of 50 new gamified courses across technology, economics, and civic education. All course completions will award badges convertible to NFTs.",
+            "proposer_id": "system",
+            "proposer_name": "Education Board",
+            "votes_for": 234,
+            "votes_against": 12,
+            "voters": [],
+            "status": "active",
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "ends_at": (datetime.now(timezone.utc) + timedelta(days=10)).isoformat()
+        },
+        {
+            "id": "prop-5",
+            "title": "Quadratic Voting Implementation",
+            "description": "Introduce quadratic voting for strategic decisions and grant allocation, giving more weight to passionate voters while preventing plutocracy.",
+            "proposer_id": "system",
+            "proposer_name": "DAO Governance Team",
+            "votes_for": 156,
+            "votes_against": 67,
+            "voters": [],
+            "status": "active",
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "ends_at": (datetime.now(timezone.utc) + timedelta(days=14)).isoformat()
+        },
+        {
+            "id": "prop-6",
+            "title": "Micro-Grant Program Launch",
+            "description": "Establish a 100,000 REALUM fund for community micro-grants. Citizens can apply for grants up to 1,000 REALUM for small community initiatives and projects.",
+            "proposer_id": "system",
+            "proposer_name": "Community Development",
+            "votes_for": 198,
+            "votes_against": 34,
+            "voters": [],
+            "status": "active",
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "ends_at": (datetime.now(timezone.utc) + timedelta(days=8)).isoformat()
+        },
+        {
+            "id": "prop-7",
+            "title": "Cultural Heritage NFT Collection",
+            "description": "Create an official REALUM cultural heritage NFT collection, tokenizing art, traditions, and historical monuments with proceeds supporting local artists.",
+            "proposer_id": "system",
+            "proposer_name": "Cultural Committee",
+            "votes_for": 145,
+            "votes_against": 28,
+            "voters": [],
+            "status": "active",
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "ends_at": (datetime.now(timezone.utc) + timedelta(days=6)).isoformat()
         }
     ]
     
