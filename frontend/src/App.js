@@ -368,198 +368,185 @@ const ConfettiProvider = ({ children }) => {
   );
 };
 
-// ==================== 3D COMPONENTS ====================
-const ZoneIsland = ({ zone, onClick, selected }) => {
-  const meshRef = useRef();
+// ==================== 2.5D ISOMETRIC MAP COMPONENTS ====================
+const IsometricZone = ({ zone, onClick, selected, index }) => {
   const [hovered, setHovered] = useState(false);
-  
   const color = zone.color || '#00F0FF';
-  const pos = zone.position_3d || { x: 0, y: 0, z: 0 };
   
-  useFrame((state) => {
-    if (meshRef.current) {
-      meshRef.current.position.y = Math.sin(state.clock.elapsedTime + pos.x) * 0.5;
-      if (hovered || selected) {
-        meshRef.current.scale.lerp(new THREE.Vector3(1.2, 1.2, 1.2), 0.1);
-      } else {
-        meshRef.current.scale.lerp(new THREE.Vector3(1, 1, 1), 0.1);
-      }
-    }
-  });
-  
-  const islandShapes = {
-    hub: (
-      <group>
-        <Cylinder args={[8, 10, 3, 6]} position={[0, 0, 0]}>
-          <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.3} />
-        </Cylinder>
-        <Box args={[4, 6, 4]} position={[0, 4, 0]}>
-          <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.5} />
-        </Box>
-      </group>
-    ),
-    default: (
-      <group>
-        <Cylinder args={[6, 8, 2, 8]} position={[0, 0, 0]}>
-          <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.2} />
-        </Cylinder>
-        <Box args={[3, 4, 3]} position={[0, 3, 0]}>
-          <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.4} />
-        </Box>
-      </group>
-    )
+  const zoneIcons = {
+    hub: '🏛️', marketplace: '🛒', learning: '📚', dao: '⚖️',
+    'tech-district': '💻', residential: '🏘️', industrial: '🏭', cultural: '🎭'
   };
   
+  // Calculate isometric position
+  const row = Math.floor(index / 4);
+  const col = index % 4;
+  const isoX = (col - row) * 120 + 400;
+  const isoY = (col + row) * 60 + 100;
+  
   return (
-    <Float speed={1} rotationIntensity={0.1} floatIntensity={0.5}>
-      <group
-        ref={meshRef}
-        position={[pos.x, 0, pos.z]}
-        onClick={onClick}
-        onPointerOver={() => setHovered(true)}
-        onPointerOut={() => setHovered(false)}
+    <motion.div
+      initial={{ opacity: 0, y: 50 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: index * 0.1 }}
+      className="absolute cursor-pointer"
+      style={{ left: isoX, top: isoY, zIndex: 100 - row * 10 + col }}
+      onClick={onClick}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      {/* Platform */}
+      <motion.div
+        animate={{ 
+          scale: hovered || selected ? 1.1 : 1,
+          y: hovered ? -5 : 0
+        }}
+        className="relative"
       >
-        {islandShapes[zone.id === 'hub' ? 'hub' : 'default']}
-        
-        {/* Zone Label */}
-        <Html position={[0, 8, 0]} center distanceFactor={15}>
-          <div 
-            className={`px-3 py-1 text-xs font-mono whitespace-nowrap transition-all ${hovered || selected ? 'bg-white/20 scale-110' : 'bg-black/60'}`}
-            style={{ 
-              color: color, 
-              border: `1px solid ${color}`,
-              boxShadow: hovered || selected ? `0 0 20px ${color}` : 'none'
-            }}
-          >
-            {zone.name}
+        {/* Base Platform (Isometric Diamond) */}
+        <div 
+          className="w-32 h-16 relative"
+          style={{
+            background: `linear-gradient(135deg, ${color}40 0%, ${color}20 50%, ${color}10 100%)`,
+            clipPath: 'polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)',
+            boxShadow: selected ? `0 0 30px ${color}` : hovered ? `0 0 20px ${color}60` : 'none'
+          }}
+        >
+          {/* Building Icon */}
+          <div className="absolute inset-0 flex items-center justify-center">
+            <span className="text-3xl transform -translate-y-2">{zoneIcons[zone.id] || '🏢'}</span>
           </div>
-        </Html>
+        </div>
         
-        {/* Hover Info */}
+        {/* Building Structure */}
+        <div 
+          className="absolute -top-8 left-1/2 -translate-x-1/2 w-12 h-12 flex items-center justify-center"
+          style={{
+            background: `linear-gradient(to top, ${color}60, ${color}30)`,
+            clipPath: 'polygon(20% 100%, 20% 40%, 50% 20%, 80% 40%, 80% 100%)',
+            boxShadow: `0 0 15px ${color}40`
+          }}
+        />
+        
+        {/* Label */}
+        <div 
+          className={`absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap px-2 py-1 text-xs font-mono transition-all ${
+            hovered || selected ? 'bg-black/90' : 'bg-black/60'
+          }`}
+          style={{ 
+            color: color,
+            border: `1px solid ${color}40`,
+            boxShadow: hovered || selected ? `0 0 10px ${color}40` : 'none'
+          }}
+        >
+          {zone.name}
+        </div>
+        
+        {/* Job Count Badge */}
+        <div 
+          className="absolute -top-2 -right-2 px-2 py-0.5 text-xs font-mono bg-black border"
+          style={{ borderColor: color, color }}
+        >
+          {zone.jobs_count}
+        </div>
+      </motion.div>
+      
+      {/* Hover Info Popup */}
+      <AnimatePresence>
         {hovered && (
-          <Html position={[0, -5, 0]} center distanceFactor={15}>
-            <div className="bg-black/90 border border-white/20 p-3 text-xs w-48">
-              <p className="text-white/80 mb-2">{zone.description}</p>
-              <div className="flex justify-between text-white/60">
-                <span>{zone.jobs_count} jobs</span>
-                <span>{zone.buildings?.length || 0} buildings</span>
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 10 }}
+            className="absolute top-full left-1/2 -translate-x-1/2 mt-10 w-56 bg-black/95 border p-3 z-50"
+            style={{ borderColor: color }}
+          >
+            <p className="text-xs text-white/70 mb-2">{zone.description}</p>
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div className="p-1 bg-white/5">
+                <div className="text-white/50">Buildings</div>
+                <div style={{ color }}>{zone.buildings?.length || 0}</div>
+              </div>
+              <div className="p-1 bg-white/5">
+                <div className="text-white/50">Jobs</div>
+                <div style={{ color }}>{zone.jobs_count}</div>
               </div>
             </div>
-          </Html>
+            {zone.features?.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-1">
+                {zone.features.slice(0, 3).map((f, i) => (
+                  <span key={i} className="text-[9px] px-1 py-0.5 bg-white/5 text-white/60">{f}</span>
+                ))}
+              </div>
+            )}
+          </motion.div>
         )}
-        
-        {/* Selection Ring */}
-        {selected && (
-          <mesh position={[0, -1, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-            <ringGeometry args={[9, 11, 32]} />
-            <meshBasicMaterial color={color} transparent opacity={0.5} />
-          </mesh>
-        )}
-      </group>
-    </Float>
+      </AnimatePresence>
+    </motion.div>
   );
 };
 
-const ProjectIsland = ({ project, onClick }) => {
-  const meshRef = useRef();
+const FloatingProject = ({ project, index }) => {
   const [hovered, setHovered] = useState(false);
   
-  const colors = {
-    tech: '#FF003C',
-    creative: '#E040FB',
-    education: '#9D4EDD',
-    commerce: '#FF6B35',
-    civic: '#40C4FF',
-    default: '#00F0FF'
+  const categoryColors = {
+    tech: '#FF003C', creative: '#E040FB', education: '#9D4EDD', commerce: '#FF6B35', default: '#00F0FF'
   };
+  const color = categoryColors[project.category] || categoryColors.default;
   
-  const color = colors[project.island_type] || colors.default;
-  const pos = project.position_3d || { x: 0, y: 0, z: 0 };
-  
-  useFrame((state) => {
-    if (meshRef.current) {
-      meshRef.current.rotation.y += 0.005;
-      meshRef.current.position.y = Math.sin(state.clock.elapsedTime * 0.5 + pos.x * 0.1) * 0.3;
-    }
-  });
+  // Random floating position
+  const left = 100 + (index % 5) * 180;
+  const top = 50 + Math.floor(index / 5) * 100;
   
   return (
-    <group
-      ref={meshRef}
-      position={[pos.x, 5, pos.z]}
-      onClick={onClick}
-      onPointerOver={() => setHovered(true)}
-      onPointerOut={() => setHovered(false)}
+    <motion.div
+      initial={{ opacity: 0, scale: 0 }}
+      animate={{ 
+        opacity: 1, 
+        scale: 1,
+        y: [0, -10, 0]
+      }}
+      transition={{ 
+        delay: 0.5 + index * 0.15,
+        y: { duration: 3, repeat: Infinity, ease: "easeInOut" }
+      }}
+      className="absolute cursor-pointer"
+      style={{ left, top }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
     >
-      <Sphere args={[2, 16, 16]}>
-        <meshStandardMaterial 
-          color={color} 
-          emissive={color} 
-          emissiveIntensity={hovered ? 0.8 : 0.4}
-          wireframe={hovered}
-        />
-      </Sphere>
+      <div 
+        className={`w-12 h-12 rounded-full border-2 flex items-center justify-center transition-all ${
+          hovered ? 'scale-125' : ''
+        }`}
+        style={{ 
+          borderColor: color,
+          background: `radial-gradient(circle, ${color}30, transparent)`,
+          boxShadow: hovered ? `0 0 30px ${color}` : `0 0 15px ${color}40`
+        }}
+      >
+        <span className="text-lg">🔮</span>
+      </div>
       
-      {hovered && (
-        <Html position={[0, 4, 0]} center distanceFactor={10}>
-          <div className="bg-black/90 border p-3 text-xs w-56" style={{ borderColor: color }}>
-            <h4 className="font-bold mb-1" style={{ color }}>{project.title}</h4>
-            <p className="text-white/70 mb-2 text-[10px]">{project.description?.slice(0, 80)}...</p>
-            <div className="flex justify-between text-white/60">
-              <span>{project.tasks?.length || 0} tasks</span>
-              <span>{project.progress}% done</span>
+      <AnimatePresence>
+        {hovered && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.8 }}
+            className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-48 bg-black/95 border p-2 z-50"
+            style={{ borderColor: color }}
+          >
+            <h4 className="font-mono text-xs font-bold" style={{ color }}>{project.title}</h4>
+            <p className="text-[10px] text-white/60 mt-1 line-clamp-2">{project.description}</p>
+            <div className="mt-2 h-1 bg-white/10">
+              <div className="h-full" style={{ width: `${project.progress}%`, backgroundColor: color }} />
             </div>
-            <div className="mt-2 h-1 bg-white/20">
-              <div className="h-full transition-all" style={{ width: `${project.progress}%`, backgroundColor: color }} />
-            </div>
-          </div>
-        </Html>
-      )}
-    </group>
-  );
-};
-
-const MetaverseScene = ({ zones, projects, onSelectZone, selectedZone }) => {
-  return (
-    <>
-      <ambientLight intensity={0.3} />
-      <pointLight position={[0, 50, 0]} intensity={1} color="#00F0FF" />
-      <pointLight position={[50, 20, 50]} intensity={0.5} color="#FF003C" />
-      <pointLight position={[-50, 20, -50]} intensity={0.5} color="#9D4EDD" />
-      
-      <Stars radius={200} depth={100} count={3000} factor={4} saturation={0} fade speed={1} />
-      
-      {/* Ground Grid */}
-      <gridHelper args={[200, 40, '#00F0FF', '#1a1a2e']} position={[0, -5, 0]} />
-      
-      {/* Zone Islands */}
-      {zones.map(zone => (
-        <ZoneIsland
-          key={zone.id}
-          zone={zone}
-          onClick={() => onSelectZone(zone)}
-          selected={selectedZone?.id === zone.id}
-        />
-      ))}
-      
-      {/* Project Islands (floating above) */}
-      {projects?.slice(0, 10).map(project => (
-        <ProjectIsland
-          key={project.id}
-          project={project}
-          onClick={() => {}}
-        />
-      ))}
-      
-      <OrbitControls 
-        enablePan={true}
-        enableZoom={true}
-        enableRotate={true}
-        minDistance={30}
-        maxDistance={150}
-        maxPolarAngle={Math.PI / 2.2}
-      />
-    </>
+            <div className="text-[9px] text-white/40 mt-1">{project.progress}% complete</div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
   );
 };
 
