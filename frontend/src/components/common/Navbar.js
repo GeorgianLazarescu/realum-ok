@@ -3,14 +3,16 @@ import { Link, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { 
   Home, Briefcase, Wallet, Vote, Trophy, User, LogOut, Menu, X, 
-  GraduationCap, Layers, ShoppingBag, Play
+  GraduationCap, Layers, ShoppingBag, Play, Users
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { useWeb3 } from '../../context/Web3Context';
 import { useTranslation } from '../../context/LanguageContext';
 import LanguageSelector from './LanguageSelector';
 
 const Navbar = () => {
   const { user, logout } = useAuth();
+  const { isConnected, formatAddress, account } = useWeb3();
   const t = useTranslation();
   const [menuOpen, setMenuOpen] = useState(false);
   const location = useLocation();
