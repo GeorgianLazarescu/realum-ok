@@ -26,7 +26,8 @@ import {
   LeaderboardPage,
   ProfilePage,
   SimulationPage,
-  ProjectsPage
+  ProjectsPage,
+  ReferralPage
 } from './pages';
 
 // App Layout Component
