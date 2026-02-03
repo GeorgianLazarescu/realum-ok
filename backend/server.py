@@ -21,6 +21,18 @@ from routers.notifications import router as notifications_router
 from routers.chat import router as chat_router
 from routers.content import router as content_router
 from routers.advanced_features import router as advanced_features_router
+from routers.partners import router as partners_router
+from routers.analytics import router as analytics_router
+from routers.badges import router as badges_router
+from routers.feedback import router as feedback_router
+from routers.bounties import router as bounties_router
+from routers.disputes import router as disputes_router
+from routers.reputation import router as reputation_router
+from routers.subdaos import router as subdaos_router
+from routers.search import router as search_router
+from routers.moderation import router as moderation_router
+from routers.social import router as social_router
+from routers.achievements import router as achievements_router
 
 from core.security import SecurityHeadersMiddleware, RequestSizeMiddleware
 from core.rate_limiter import rate_limiter
@@ -94,20 +106,45 @@ app.include_router(content_router, prefix="/api")
 app.include_router(advanced_features_router, prefix="/api")
 app.include_router(security_router)
 app.include_router(monitoring_router)
+app.include_router(partners_router)
+app.include_router(analytics_router)
+app.include_router(badges_router)
+app.include_router(feedback_router)
+app.include_router(bounties_router)
+app.include_router(disputes_router)
+app.include_router(reputation_router)
+app.include_router(subdaos_router)
+app.include_router(search_router)
+app.include_router(moderation_router)
+app.include_router(social_router)
+app.include_router(achievements_router)
 
 @app.get("/")
 async def root():
     return {
         "name": "REALUM API",
-        "version": "2.0.0",
+        "version": "3.0.0",
         "status": "production-ready",
         "security": "enabled",
+        "total_modules": "125+",
         "features": [
             "2FA Authentication",
             "GDPR Compliance",
             "Rate Limiting",
             "Automated Backups",
-            "Security Monitoring"
+            "Security Monitoring",
+            "Partner Integration API",
+            "Advanced Analytics Dashboard",
+            "Badge Evolution System",
+            "Feedback & Contribution Rewards",
+            "Task Bounty Marketplace",
+            "Dispute Resolution System",
+            "Multi-Dimensional Reputation Engine",
+            "Sub-DAO Hierarchical System",
+            "Advanced Search & Discovery",
+            "Content Moderation Queue",
+            "Social Features (Follow, Like, Comment)",
+            "Advanced Achievement System"
         ],
         "docs": "/docs"
     }
