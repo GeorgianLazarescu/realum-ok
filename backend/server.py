@@ -17,6 +17,10 @@ from routers.daily import router as daily_router
 from routers.referral import router as referral_router
 from routers.security import router as security_router
 from routers.monitoring import router as monitoring_router
+from routers.notifications import router as notifications_router
+from routers.chat import router as chat_router
+from routers.content import router as content_router
+from routers.advanced_features import router as advanced_features_router
 
 from core.security import SecurityHeadersMiddleware, RequestSizeMiddleware
 from core.rate_limiter import rate_limiter
@@ -84,6 +88,10 @@ app.include_router(stats_router, prefix="/api")
 app.include_router(admin_router, prefix="/api")
 app.include_router(daily_router, prefix="/api")
 app.include_router(referral_router, prefix="/api")
+app.include_router(notifications_router, prefix="/api")
+app.include_router(chat_router, prefix="/api")
+app.include_router(content_router, prefix="/api")
+app.include_router(advanced_features_router, prefix="/api")
 app.include_router(security_router)
 app.include_router(monitoring_router)
 

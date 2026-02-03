@@ -1,8 +1,11 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException, Depends
 from datetime import datetime, timezone
+from typing import Optional
+from pydantic import BaseModel
 import uuid
 
 from core.database import db
+from core.auth import get_current_user, admin_required
 
 router = APIRouter(tags=["Admin"])
 
@@ -129,3 +132,69 @@ async def app_status():
         "refactored": True,
         "timestamp": datetime.now(timezone.utc).isoformat()
     }
+
+class SeasonalRewardCreate(BaseModel):
+    event_name: str
+    description: Optional[str] = None
+    start_date: str
+    end_date: str
+    base_reward_multiplier: float = 2.0
+    bonus_tokens: int = 1000
+    is_active: bool = True
+
+@router.post("/seasonal-rewards")
+async def create_seasonal_reward(
+    reward: SeasonalRewardCreate,
+    current_user: dict = Depends(admin_required)
+):
+    """Create a new seasonal reward event (admin only)"""
+    seasonal_id = str(uuid.uuid4())
+
+    await db.seasonal_rewards.insert_one({
+        "id": seasonal_id,
+        "event_name": reward.event_name,
+        "description": reward.description,
+        "start_date": reward.start_date,
+        "end_date": reward.end_date,
+        "base_reward_multiplier": reward.base_reward_multiplier,
+        "bonus_tokens": reward.bonus_tokens,
+        "is_active": reward.is_active,
+        "created_by": current_user["id"],
+        "created_at": datetime.now(timezone.utc).isoformat()
+    })
+
+    return {
+        "message": "Seasonal reward created successfully",
+        "reward_id": seasonal_id
+    }
+
+@router.get("/seasonal-rewards")
+async def list_all_seasonal_rewards(current_user: dict = Depends(admin_required)):
+    """List all seasonal rewards (admin only)"""
+    rewards = await db.seasonal_rewards.find({}, {"_id": 0}).sort("created_at", -1).to_list(50)
+
+    return {"rewards": rewards}
+
+@router.patch("/seasonal-rewards/{reward_id}")
+async def update_seasonal_reward(
+    reward_id: str,
+    is_active: Optional[bool] = None,
+    current_user: dict = Depends(admin_required)
+):
+    """Update seasonal reward status (admin only)"""
+    update_data = {}
+    if is_active is not None:
+        update_data["is_active"] = is_active
+
+    if not update_data:
+        raise HTTPException(status_code=400, detail="No update data provided")
+
+    result = await db.seasonal_rewards.update_one(
+        {"id": reward_id},
+        {"$set": update_data}
+    )
+
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="Seasonal reward not found")
+
+    return {"message": "Seasonal reward updated successfully"}
