@@ -179,6 +179,14 @@ function App() {
                 </ProtectedRoute>
               } />
               
+              <Route path="/notifications" element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <NotificationsPage />
+                  </AppLayout>
+                </ProtectedRoute>
+              } />
+              
               {/* Catch all - redirect to dashboard */}
               <Route path="*" element={<Navigate to="/dashboard" replace />} />
             </Routes>
