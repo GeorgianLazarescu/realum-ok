@@ -154,6 +154,30 @@ function App() {
                 </ProtectedRoute>
               } />
               
+              <Route path="/search" element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <SearchPage />
+                  </AppLayout>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/achievements" element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <AchievementsPage />
+                  </AppLayout>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/social" element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <SocialPage />
+                  </AppLayout>
+                </ProtectedRoute>
+              } />
+              
               {/* Catch all - redirect to dashboard */}
               <Route path="*" element={<Navigate to="/dashboard" replace />} />
             </Routes>
