@@ -150,12 +150,12 @@ backend/
 - [x] 3D Metaverse (Three.js) - `/metaverse/3d`
 - [x] AI Recommendations - `/api/recommendations/*`
 - [x] DeFi Staking - `/api/defi/staking/*`
-- [ ] Video streaming for courses (frontend player needed)
+- [x] Video Streaming - `/api/video/*` + VideoPlayer component
 - [ ] NFT Marketplace (requires external integration)
 - [ ] Mobile Native Apps (iOS/Android)
 
 ## Last Updated
-February 4, 2026 - **P4 Features Added!** 3D Metaverse, AI Recommendations, DeFi Staking.
+February 4, 2026 - **P4 Video Streaming Added!** Full video player with chapters, notes, progress tracking.
 
 ### P3 Implementation Summary
 
