@@ -81,6 +81,140 @@ async def create_subdao(subdao: SubDAOCreate, current_user: dict = Depends(get_c
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
+@router.get("/categories")
+async def get_subdao_categories():
+    """Get available Sub-DAO categories"""
+    return {
+        "categories": [
+            {"key": "education", "name": "Education", "description": "Educational initiatives"},
+            {"key": "development", "name": "Development", "description": "Technical development"},
+            {"key": "community", "name": "Community", "description": "Community building"},
+            {"key": "marketing", "name": "Marketing", "description": "Marketing and outreach"},
+            {"key": "research", "name": "Research", "description": "Research and analysis"},
+            {"key": "governance", "name": "Governance", "description": "Governance improvements"},
+            {"key": "events", "name": "Events", "description": "Events and meetups"},
+            {"key": "other", "name": "Other", "description": "Other initiatives"}
+        ],
+        "governance_models": [
+            {"key": "simple_majority", "name": "Simple Majority", "description": "50% + 1 votes needed"},
+            {"key": "super_majority", "name": "Super Majority", "description": "66% votes needed"},
+            {"key": "quadratic", "name": "Quadratic Voting", "description": "Square root voting power"},
+            {"key": "conviction", "name": "Conviction Voting", "description": "Time-weighted voting"}
+        ]
+    }
+
+@router.get("/hierarchy")
+async def get_dao_hierarchy():
+    """Get hierarchical view of all Sub-DAOs"""
+    try:
+        all_subdaos = await db.subdaos.find(
+            {"status": "active"},
+            {"_id": 0}
+        ).to_list(100)
+
+        # Build tree structure
+        root_daos = []
+        child_daos = {}
+
+        for subdao in all_subdaos:
+            parent_id = subdao.get("parent_dao_id")
+            if not parent_id:
+                root_daos.append(subdao)
+            else:
+                if parent_id not in child_daos:
+                    child_daos[parent_id] = []
+                child_daos[parent_id].append(subdao)
+
+        def build_tree(dao):
+            dao_id = dao["id"]
+            dao["children"] = child_daos.get(dao_id, [])
+            for child in dao["children"]:
+                build_tree(child)
+            return dao
+
+        hierarchy = [build_tree(dao) for dao in root_daos]
+
+        return {"hierarchy": hierarchy}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@router.get("/stats")
+async def get_subdao_stats():
+    """Get Sub-DAO statistics"""
+    try:
+        total = await db.subdaos.count_documents({})
+
+        # Total budget
+        budget_pipeline = [
+            {"$group": {"_id": None, "total": {"$sum": "$budget_allocated"}}}
+        ]
+        budget_result = await db.subdaos.aggregate(budget_pipeline).to_list(1)
+        total_budget = budget_result[0]["total"] if budget_result else 0
+
+        # Status breakdown
+        status_pipeline = [
+            {"$group": {"_id": "$status", "count": {"$sum": 1}}}
+        ]
+        status_result = await db.subdaos.aggregate(status_pipeline).to_list(None)
+        status_breakdown = {item["_id"]: item["count"] for item in status_result if item["_id"]}
+
+        # Category breakdown
+        category_pipeline = [
+            {"$group": {"_id": "$category", "count": {"$sum": 1}}}
+        ]
+        category_result = await db.subdaos.aggregate(category_pipeline).to_list(None)
+        category_breakdown = {item["_id"]: item["count"] for item in category_result if item["_id"]}
+
+        # Total members
+        total_members = await db.subdao_members.count_documents({})
+
+        return {
+            "stats": {
+                "total_subdaos": total,
+                "total_budget_allocated": total_budget,
+                "total_members": total_members,
+                "status_breakdown": status_breakdown,
+                "category_breakdown": category_breakdown
+            }
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@router.get("/my-subdaos")
+async def get_my_subdaos(current_user: dict = Depends(get_current_user)):
+    """Get Sub-DAOs user is involved in"""
+    try:
+        user_id = current_user["id"]
+
+        # Created by user
+        created = await db.subdaos.find(
+            {"creator_id": user_id},
+            {"_id": 0}
+        ).to_list(50)
+
+        # Member of
+        memberships = await db.subdao_members.find(
+            {"user_id": user_id},
+            {"_id": 0, "subdao_id": 1, "role": 1}
+        ).to_list(50)
+
+        member_ids = [m["subdao_id"] for m in memberships]
+        member_subdaos = []
+        
+        if member_ids:
+            member_subdaos = await db.subdaos.find(
+                {"id": {"$in": member_ids}},
+                {"_id": 0}
+            ).to_list(50)
+
+        return {
+            "created_subdaos": created,
+            "member_subdaos": member_subdaos,
+            "memberships": memberships
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
 @router.get("/list")
 async def list_subdaos(
     status: Optional[str] = None,
