@@ -206,13 +206,20 @@ const Navbar = () => {
               <Link
                 key={item.path}
                 to={item.path}
-                className={`flex flex-col items-center justify-center flex-1 h-full py-2 transition-colors ${
+                className={`relative flex flex-col items-center justify-center flex-1 h-full py-2 transition-colors ${
                   location.pathname === item.path
                     ? 'text-neon-cyan'
                     : 'text-white/50'
                 }`}
               >
-                <item.icon className={`w-5 h-5 mb-1 ${location.pathname === item.path ? 'scale-110' : ''}`} />
+                <div className="relative">
+                  <item.icon className={`w-5 h-5 mb-1 ${location.pathname === item.path ? 'scale-110' : ''}`} />
+                  {item.badge > 0 && (
+                    <span className="absolute -top-1 -right-2 w-4 h-4 bg-neon-red text-white text-[8px] font-bold flex items-center justify-center rounded-full">
+                      {item.badge > 9 ? '9+' : item.badge}
+                    </span>
+                  )}
+                </div>
                 <span className="text-[10px] font-medium">{item.label}</span>
               </Link>
             ))}
