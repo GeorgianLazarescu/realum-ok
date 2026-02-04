@@ -129,29 +129,6 @@ async def list_content(
         if is_published is not None:
             query["is_published"] = is_published
 
-@router.get("/categories")
-async def get_content_categories():
-    """Get available content categories"""
-    return {
-        "content_types": [
-            {"key": "page", "name": "Page", "description": "Static pages"},
-            {"key": "announcement", "name": "Announcement", "description": "System announcements"},
-            {"key": "faq", "name": "FAQ", "description": "Frequently asked questions"},
-            {"key": "guide", "name": "Guide", "description": "How-to guides"},
-            {"key": "news", "name": "News", "description": "Platform news and updates"}
-        ],
-        "faq_categories": [
-            "general", "account", "wallet", "courses", "governance", "metaverse", "tokens"
-        ],
-        "announcement_priorities": [
-            {"key": "low", "color": "#10B981"},
-            {"key": "normal", "color": "#3B82F6"},
-            {"key": "high", "color": "#F59E0B"},
-            {"key": "critical", "color": "#EF4444"}
-        ]
-    }
-
-
         content_list = await db.content.find(
             query,
             {"_id": 0, "body": 0}  # Exclude body for listing
