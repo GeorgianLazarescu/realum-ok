@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 from datetime import datetime, timedelta
-from core.auth import get_current_user, require_role
+from core.auth import get_current_user, require_admin
 from core.database import db
 
 router = APIRouter(prefix="/api/analytics", tags=["Analytics"])
