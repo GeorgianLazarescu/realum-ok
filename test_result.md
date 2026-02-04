@@ -262,21 +262,10 @@ backend:
       - working: "NA"
         agent: "main"
         comment: "Implemented partner registration, API key management, webhooks, OAuth clients, partner API endpoints"
-    file: "backend/routers/security.py"
-    stuck_count: 0
-    priority: "high"
-    needs_retesting: false
-    status_history:
-      - working: "NA"
-        agent: "main"
-        comment: "Implemented email verification token generation and verification endpoints"
-      - working: true
-        agent: "testing"
-        comment: "✅ Email verification system integrated - Tokens generated during registration, verification endpoints available"
 
 metadata:
   created_by: "main_agent"
-  version: "1.0"
+  version: "2.0"
   test_sequence: 2
   run_ui: false
 
