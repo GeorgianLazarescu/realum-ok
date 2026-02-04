@@ -13,3 +13,6 @@ export { default as ProfilePage } from './ProfilePage';
 export { default as SimulationPage } from './SimulationPage';
 export { default as ProjectsPage } from './ProjectsPage';
 export { default as ReferralPage } from './ReferralPage';
+export { default as SearchPage } from './SearchPage';
+export { default as AchievementsPage } from './AchievementsPage';
+export { default as SocialPage } from './SocialPage';
