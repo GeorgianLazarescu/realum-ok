@@ -17,3 +17,4 @@ export { default as SearchPage } from './SearchPage';
 export { default as AchievementsPage } from './AchievementsPage';
 export { default as SocialPage } from './SocialPage';
 export { default as NotificationsPage } from './NotificationsPage';
+export { default as ChatPage } from './ChatPage';
