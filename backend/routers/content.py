@@ -459,12 +459,12 @@ async def create_announcement(
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-@router.get("/announcements")
+@router.get("/announcements/list")
 async def get_announcements(
     active_only: bool = True,
     current_user: dict = Depends(get_current_user)
 ):
-    """Get announcements for current user"""
+    """Get announcements for current user (authenticated - role filtered)"""
     try:
         now = datetime.now(timezone.utc).isoformat()
         user_role = current_user.get("role", "citizen")
@@ -489,6 +489,30 @@ async def get_announcements(
         ]
 
         return {"announcements": filtered}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.get("/announcements/public")
+async def get_public_announcements(active_only: bool = True):
+    """Get public announcements (no authentication required)"""
+    try:
+        now = datetime.now(timezone.utc).isoformat()
+
+        query = {"target_roles": []}  # Only announcements for all users
+        if active_only:
+            query["is_active"] = True
+            query["$or"] = [
+                {"expires_at": None},
+                {"expires_at": {"$gt": now}}
+            ]
+
+        announcements = await db.announcements.find(
+            query,
+            {"_id": 0}
+        ).sort("created_at", -1).to_list(50)
+
+        return {"announcements": announcements}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
