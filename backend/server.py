@@ -38,6 +38,7 @@ from routers.seo import router as seo_router
 from routers.recommendations import router as recommendations_router
 from routers.defi import router as defi_router
 from routers.video import router as video_router
+from routers.nft import router as nft_router
 
 from core.security import SecurityHeadersMiddleware, RequestSizeMiddleware
 from core.rate_limiter import rate_limiter
