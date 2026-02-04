@@ -35,6 +35,8 @@ from routers.moderation import router as moderation_router
 from routers.social import router as social_router
 from routers.achievements import router as achievements_router
 from routers.seo import router as seo_router
+from routers.recommendations import router as recommendations_router
+from routers.defi import router as defi_router
 
 from core.security import SecurityHeadersMiddleware, RequestSizeMiddleware
 from core.rate_limiter import rate_limiter
