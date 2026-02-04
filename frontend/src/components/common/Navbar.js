@@ -1,21 +1,33 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { 
   Home, Briefcase, Wallet, Vote, Trophy, User, LogOut, Menu, X, 
-  GraduationCap, Layers, ShoppingBag, Play, Users, Search, Award
+  GraduationCap, Layers, ShoppingBag, Play, Users, Search, Award, Bell, MessageCircle
 } from 'lucide-react';
+import axios from 'axios';
 import { useAuth } from '../../context/AuthContext';
 import { useWeb3 } from '../../context/Web3Context';
 import { useTranslation } from '../../context/LanguageContext';
 import LanguageSelector from './LanguageSelector';
+import { API } from '../../utils/api';
 
 const Navbar = () => {
   const { user, logout } = useAuth();
   const { isConnected, formatAddress, account } = useWeb3();
   const t = useTranslation();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
   const location = useLocation();
+  
+  // Fetch unread count
+  useEffect(() => {
+    if (user) {
+      axios.get(`${API}/notifications/unread-count`)
+        .then(res => setUnreadNotifications(res.data.unread_count || 0))
+        .catch(() => {});
+    }
+  }, [user, location.pathname]);
   
   const navItems = [
     { path: '/dashboard', icon: Home, label: t('dashboard') },
@@ -24,15 +36,15 @@ const Navbar = () => {
     { path: '/courses', icon: GraduationCap, label: t('courses') },
     { path: '/voting', icon: Vote, label: t('voting') },
     { path: '/wallet', icon: Wallet, label: t('wallet') },
-    { path: '/social', icon: Users, label: 'Social' },
-    { path: '/achievements', icon: Award, label: 'Achievements' }
+    { path: '/chat', icon: MessageCircle, label: 'Chat' },
+    { path: '/social', icon: Users, label: 'Social' }
   ];
   
   const mobileNavItems = [
     { path: '/dashboard', icon: Home, label: 'Home' },
-    { path: '/search', icon: Search, label: 'Search' },
+    { path: '/chat', icon: MessageCircle, label: 'Chat' },
+    { path: '/notifications', icon: Bell, label: 'Alerts', badge: unreadNotifications },
     { path: '/social', icon: Users, label: 'Social' },
-    { path: '/achievements', icon: Award, label: 'Awards' },
     { path: '/profile', icon: User, label: t('profile') }
   ];
   
