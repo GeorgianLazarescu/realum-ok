@@ -5,7 +5,7 @@ from datetime import datetime
 import secrets
 import hashlib
 from core.auth import get_current_user
-from core.database import supabase
+from core.database import db
 
 router = APIRouter(prefix="/api/partners", tags=["Partners"])
 

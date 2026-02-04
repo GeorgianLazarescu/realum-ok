@@ -3,7 +3,7 @@ from pydantic import BaseModel
 from typing import Optional, Dict
 from datetime import datetime, timedelta
 from core.auth import get_current_user
-from core.database import supabase
+from core.database import db
 
 router = APIRouter(prefix="/api/reputation", tags=["Reputation"])
 

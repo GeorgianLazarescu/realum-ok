@@ -3,7 +3,7 @@ from pydantic import BaseModel
 from typing import Optional, List, Dict
 from datetime import datetime
 from core.auth import get_current_user
-from core.database import supabase
+from core.database import db
 from services.token_service import TokenService
 
 router = APIRouter(prefix="/api/badges", tags=["Badges"])
