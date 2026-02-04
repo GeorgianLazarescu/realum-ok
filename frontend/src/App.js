@@ -31,7 +31,8 @@ import {
   ReferralPage,
   SearchPage,
   AchievementsPage,
-  SocialPage
+  SocialPage,
+  NotificationsPage
 } from './pages';
 
 // App Layout Component
