@@ -1,14 +1,121 @@
-from fastapi import APIRouter, HTTPException, Depends, Query
+from fastapi import APIRouter, HTTPException, Depends, Query, WebSocket, WebSocketDisconnect
 from datetime import datetime, timezone, timedelta
 from typing import Optional, List, Dict
 from pydantic import BaseModel
 import uuid
+import json
+import asyncio
 
 from core.database import db
 from core.auth import get_current_user, require_admin
 from services.notification_service import send_notification
 
 router = APIRouter(prefix="/chat", tags=["Chat"])
+
+# ===================== WEBSOCKET MANAGER =====================
+
+class ConnectionManager:
+    def __init__(self):
+        # Map of channel_id -> list of (user_id, websocket) tuples
+        self.active_connections: Dict[str, List[tuple]] = {}
+        # Map of user_id -> set of channel_ids they're connected to
+        self.user_channels: Dict[str, set] = {}
+        # Map of user_id -> websocket for direct notifications
+        self.user_connections: Dict[str, WebSocket] = {}
+        # Map of channel_id -> set of user_ids currently typing
+        self.typing_users: Dict[str, set] = {}
+
+    async def connect(self, websocket: WebSocket, channel_id: str, user_id: str):
+        await websocket.accept()
+        
+        if channel_id not in self.active_connections:
+            self.active_connections[channel_id] = []
+        self.active_connections[channel_id].append((user_id, websocket))
+        
+        if user_id not in self.user_channels:
+            self.user_channels[user_id] = set()
+        self.user_channels[user_id].add(channel_id)
+        
+        self.user_connections[user_id] = websocket
+        
+        # Notify others in channel that user joined
+        await self.broadcast_to_channel(channel_id, {
+            "type": "user_joined",
+            "user_id": user_id,
+            "channel_id": channel_id,
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }, exclude_user=user_id)
+
+    def disconnect(self, websocket: WebSocket, channel_id: str, user_id: str):
+        if channel_id in self.active_connections:
+            self.active_connections[channel_id] = [
+                (uid, ws) for uid, ws in self.active_connections[channel_id]
+                if ws != websocket
+            ]
+            if not self.active_connections[channel_id]:
+                del self.active_connections[channel_id]
+        
+        if user_id in self.user_channels:
+            self.user_channels[user_id].discard(channel_id)
+            if not self.user_channels[user_id]:
+                del self.user_channels[user_id]
+        
+        if user_id in self.user_connections:
+            del self.user_connections[user_id]
+        
+        # Remove from typing
+        if channel_id in self.typing_users:
+            self.typing_users[channel_id].discard(user_id)
+
+    async def broadcast_to_channel(self, channel_id: str, message: dict, exclude_user: str = None):
+        if channel_id not in self.active_connections:
+            return
+        
+        message_str = json.dumps(message)
+        disconnected = []
+        
+        for user_id, websocket in self.active_connections[channel_id]:
+            if exclude_user and user_id == exclude_user:
+                continue
+            try:
+                await websocket.send_text(message_str)
+            except Exception:
+                disconnected.append((user_id, websocket))
+        
+        # Clean up disconnected
+        for item in disconnected:
+            self.active_connections[channel_id].remove(item)
+
+    async def send_to_user(self, user_id: str, message: dict):
+        if user_id in self.user_connections:
+            try:
+                await self.user_connections[user_id].send_text(json.dumps(message))
+            except Exception:
+                pass
+
+    def get_online_users(self, channel_id: str) -> List[str]:
+        if channel_id not in self.active_connections:
+            return []
+        return list(set(user_id for user_id, _ in self.active_connections[channel_id]))
+
+    async def set_typing(self, channel_id: str, user_id: str, is_typing: bool):
+        if channel_id not in self.typing_users:
+            self.typing_users[channel_id] = set()
+        
+        if is_typing:
+            self.typing_users[channel_id].add(user_id)
+        else:
+            self.typing_users[channel_id].discard(user_id)
+        
+        await self.broadcast_to_channel(channel_id, {
+            "type": "typing",
+            "user_id": user_id,
+            "is_typing": is_typing,
+            "channel_id": channel_id
+        }, exclude_user=user_id)
+
+
+manager = ConnectionManager()
 
 # ===================== MODELS =====================
 
