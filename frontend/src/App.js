@@ -28,7 +28,10 @@ import {
   ProfilePage,
   SimulationPage,
   ProjectsPage,
-  ReferralPage
+  ReferralPage,
+  SearchPage,
+  AchievementsPage,
+  SocialPage
 } from './pages';
 
 // App Layout Component
