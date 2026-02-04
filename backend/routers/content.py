@@ -204,7 +204,7 @@ async def get_content_by_slug(slug: str):
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-@router.get("/{content_id}")
+@router.get("/item/{content_id}")
 async def get_content_by_id(
     content_id: str,
     current_user: dict = Depends(get_current_user)
@@ -238,7 +238,7 @@ async def get_content_by_id(
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-@router.patch("/{content_id}")
+@router.patch("/item/{content_id}")
 async def update_content(
     content_id: str,
     update: ContentUpdate,
@@ -283,7 +283,7 @@ async def update_content(
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-@router.delete("/{content_id}")
+@router.delete("/item/{content_id}")
 async def delete_content(
     content_id: str,
     current_user: dict = Depends(require_admin)
@@ -308,7 +308,7 @@ async def delete_content(
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-@router.post("/{content_id}/restore")
+@router.post("/item/{content_id}/restore")
 async def restore_content(
     content_id: str,
     current_user: dict = Depends(require_admin)
@@ -333,7 +333,7 @@ async def restore_content(
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-@router.get("/{content_id}/versions/{version}")
+@router.get("/item/{content_id}/versions/{version}")
 async def get_content_version(
     content_id: str,
     version: int,
@@ -355,7 +355,7 @@ async def get_content_version(
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-@router.post("/{content_id}/revert/{version}")
+@router.post("/item/{content_id}/revert/{version}")
 async def revert_to_version(
     content_id: str,
     version: int,
