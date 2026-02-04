@@ -16,7 +16,7 @@ from services.notification_service import (
     get_unread_count
 )
 
-router = APIRouter(prefix="/api/notifications", tags=["Notifications"])
+router = APIRouter(prefix="/notifications", tags=["Notifications"])
 
 # ===================== MODELS =====================
 
