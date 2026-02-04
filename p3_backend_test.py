@@ -75,6 +75,16 @@ class P3Tester:
         """Register and authenticate test user"""
         print("\n=== Setting up test user ===")
         
+        # Use timestamp to make user unique
+        import time
+        timestamp = int(time.time())
+        self.test_user_data = {
+            "email": f"p3test{timestamp}@realum.io",
+            "username": f"p3tester{timestamp}",
+            "password": "P3Test123!@#",
+            "role": "citizen"
+        }
+        
         try:
             # Register user
             response = self.make_request("POST", "/auth/register", self.test_user_data)
@@ -84,7 +94,7 @@ class P3Tester:
                 print(f"✅ Test user registered and authenticated")
                 return True
             else:
-                print(f"❌ Failed to register user: {response.status_code}")
+                print(f"❌ Failed to register user: {response.status_code}, {response.text}")
                 return False
         except Exception as e:
             print(f"❌ Setup error: {e}")
