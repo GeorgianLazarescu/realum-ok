@@ -976,3 +976,184 @@ async def search_messages(
         raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+# ===================== WEBSOCKET ENDPOINTS =====================
+
+async def verify_ws_token(token: str) -> dict:
+    """Verify JWT token for WebSocket connection"""
+    import jwt
+    from core.config import settings
+    
+    try:
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
+        user_id = payload.get("sub")
+        if not user_id:
+            return None
+        
+        user = await db.users.find_one({"id": user_id}, {"_id": 0, "id": 1, "username": 1})
+        return user
+    except Exception:
+        return None
+
+
+@router.websocket("/ws/{channel_id}")
+async def websocket_endpoint(websocket: WebSocket, channel_id: str, token: str = None):
+    """WebSocket endpoint for real-time chat"""
+    if not token:
+        await websocket.close(code=4001, reason="Token required")
+        return
+    
+    user = await verify_ws_token(token)
+    if not user:
+        await websocket.close(code=4001, reason="Invalid token")
+        return
+    
+    user_id = user["id"]
+    username = user.get("username", "Unknown")
+    
+    # Verify user is member of channel
+    membership = await db.chat_members.find_one({
+        "channel_id": channel_id,
+        "user_id": user_id
+    })
+    
+    if not membership:
+        await websocket.close(code=4003, reason="Not a channel member")
+        return
+    
+    await manager.connect(websocket, channel_id, user_id)
+    
+    try:
+        # Send initial connection success with online users
+        online_users = manager.get_online_users(channel_id)
+        await websocket.send_text(json.dumps({
+            "type": "connected",
+            "channel_id": channel_id,
+            "user_id": user_id,
+            "online_users": online_users
+        }))
+        
+        while True:
+            data = await websocket.receive_text()
+            message_data = json.loads(data)
+            
+            msg_type = message_data.get("type")
+            
+            if msg_type == "message":
+                # Create and broadcast new message
+                message_id = str(uuid.uuid4())
+                now = datetime.now(timezone.utc).isoformat()
+                
+                msg_content = message_data.get("content", "")
+                reply_to = message_data.get("reply_to_id")
+                
+                new_message = {
+                    "id": message_id,
+                    "channel_id": channel_id,
+                    "sender_id": user_id,
+                    "content": msg_content,
+                    "message_type": "text",
+                    "reply_to_id": reply_to,
+                    "is_edited": False,
+                    "is_deleted": False,
+                    "reactions": {},
+                    "created_at": now
+                }
+                
+                await db.chat_messages.insert_one(new_message)
+                new_message.pop("_id", None)
+                
+                # Update channel
+                await db.chat_channels.update_one(
+                    {"id": channel_id},
+                    {
+                        "$inc": {"message_count": 1},
+                        "$set": {"last_message_at": now}
+                    }
+                )
+                
+                # Broadcast to all in channel
+                broadcast_msg = {
+                    "type": "new_message",
+                    "message": {
+                        **new_message,
+                        "sender_username": username
+                    }
+                }
+                await manager.broadcast_to_channel(channel_id, broadcast_msg)
+                
+            elif msg_type == "typing":
+                is_typing = message_data.get("is_typing", True)
+                await manager.set_typing(channel_id, user_id, is_typing)
+                
+            elif msg_type == "read":
+                # Mark messages as read
+                await db.chat_members.update_one(
+                    {"channel_id": channel_id, "user_id": user_id},
+                    {"$set": {"last_seen_at": datetime.now(timezone.utc).isoformat()}}
+                )
+                await manager.broadcast_to_channel(channel_id, {
+                    "type": "read_receipt",
+                    "user_id": user_id,
+                    "channel_id": channel_id,
+                    "timestamp": datetime.now(timezone.utc).isoformat()
+                }, exclude_user=user_id)
+                
+            elif msg_type == "ping":
+                await websocket.send_text(json.dumps({"type": "pong"}))
+                
+    except WebSocketDisconnect:
+        manager.disconnect(websocket, channel_id, user_id)
+        # Notify others
+        await manager.broadcast_to_channel(channel_id, {
+            "type": "user_left",
+            "user_id": user_id,
+            "channel_id": channel_id,
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        })
+    except Exception as e:
+        manager.disconnect(websocket, channel_id, user_id)
+
+
+@router.get("/channels/{channel_id}/online")
+async def get_online_users_in_channel(
+    channel_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get list of online users in a channel"""
+    online_users = manager.get_online_users(channel_id)
+    
+    # Get user info
+    users_info = []
+    for uid in online_users:
+        user = await db.users.find_one(
+            {"id": uid},
+            {"_id": 0, "id": 1, "username": 1, "avatar_url": 1}
+        )
+        if user:
+            users_info.append(user)
+    
+    return {"online_users": users_info, "count": len(users_info)}
+
+
+@router.get("/channels/{channel_id}/typing")
+async def get_typing_users(
+    channel_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get list of users currently typing"""
+    typing_users = list(manager.typing_users.get(channel_id, set()))
+    
+    users_info = []
+    for uid in typing_users:
+        if uid != current_user["id"]:
+            user = await db.users.find_one(
+                {"id": uid},
+                {"_id": 0, "id": 1, "username": 1}
+            )
+            if user:
+                users_info.append(user)
+    
+    return {"typing_users": users_info}
+
