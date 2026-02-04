@@ -1,45 +1,83 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Dict, List, Optional
 import json
 import csv
 from io import StringIO
-from supabase import Client
+from core.database import db
 import asyncio
 
 class GDPRCompliance:
-    def __init__(self, supabase: Client):
-        self.supabase = supabase
+    """GDPR Compliance module for MongoDB"""
+    
+    def __init__(self):
+        pass
 
     async def export_user_data(self, user_id: str, format: str = "json") -> str:
+        """Export all user data for GDPR compliance (Data Portability)"""
         user_data = {}
 
         try:
-            profile = self.supabase.table("users").select("*").eq("id", user_id).execute()
-            user_data["profile"] = profile.data[0] if profile.data else {}
+            # User profile
+            profile = await db.users.find_one({"id": user_id}, {"_id": 0, "password": 0})
+            user_data["profile"] = profile or {}
 
-            courses = self.supabase.table("user_courses").select("*").eq("user_id", user_id).execute()
-            user_data["courses"] = courses.data
+            # Enrolled courses
+            courses = await db.user_courses.find({"user_id": user_id}, {"_id": 0}).to_list(None)
+            user_data["courses"] = courses
 
-            projects = self.supabase.table("projects").select("*").eq("creator_id", user_id).execute()
-            user_data["projects"] = projects.data
+            # Created projects
+            projects = await db.projects.find({"creator_id": user_id}, {"_id": 0}).to_list(None)
+            user_data["projects"] = projects
 
-            transactions = self.supabase.table("transactions").select("*").eq("user_id", user_id).execute()
-            user_data["transactions"] = transactions.data
+            # Transaction history
+            transactions = await db.transactions.find(
+                {"$or": [{"from_id": user_id}, {"to_id": user_id}]},
+                {"_id": 0}
+            ).to_list(None)
+            user_data["transactions"] = transactions
 
-            votes = self.supabase.table("votes").select("*").eq("user_id", user_id).execute()
-            user_data["votes"] = votes.data
+            # Votes cast
+            votes = await db.votes.find({"user_id": user_id}, {"_id": 0}).to_list(None)
+            user_data["votes"] = votes
 
-            proposals = self.supabase.table("proposals").select("*").eq("creator_id", user_id).execute()
-            user_data["proposals"] = proposals.data
+            # Created proposals
+            proposals = await db.proposals.find({"creator_id": user_id}, {"_id": 0}).to_list(None)
+            user_data["proposals"] = proposals
 
-            nfts = self.supabase.table("nfts").select("*").eq("owner_id", user_id).execute()
-            user_data["nfts"] = nfts.data
+            # Achievements
+            achievements = await db.user_achievements.find({"user_id": user_id}, {"_id": 0}).to_list(None)
+            user_data["achievements"] = achievements
 
-            achievements = self.supabase.table("user_achievements").select("*").eq("user_id", user_id).execute()
-            user_data["achievements"] = achievements.data
+            # Daily rewards history
+            daily_rewards = await db.daily_rewards.find({"user_id": user_id}, {"_id": 0}).to_list(None)
+            user_data["daily_rewards"] = daily_rewards
 
+            # Referrals
+            referrals = await db.referrals.find(
+                {"$or": [{"referrer_id": user_id}, {"referred_id": user_id}]},
+                {"_id": 0}
+            ).to_list(None)
+            user_data["referrals"] = referrals
+
+            # Job applications
+            job_applications = await db.job_applications.find({"user_id": user_id}, {"_id": 0}).to_list(None)
+            user_data["job_applications"] = job_applications
+
+            # Messages (chat)
+            messages = await db.messages.find(
+                {"$or": [{"sender_id": user_id}, {"recipient_id": user_id}]},
+                {"_id": 0}
+            ).to_list(None)
+            user_data["messages"] = messages
+
+            # Consent records
+            consent = await db.user_consent.find_one({"user_id": user_id}, {"_id": 0})
+            user_data["consent_records"] = consent or {}
+
+            # Metadata
             user_data["export_date"] = datetime.now().isoformat()
             user_data["data_controller"] = "REALUM Platform"
+            user_data["data_protection_officer"] = "dpo@realum.io"
 
             if format == "json":
                 return json.dumps(user_data, indent=2, default=str)
@@ -52,6 +90,7 @@ class GDPRCompliance:
             raise Exception(f"Failed to export user data: {str(e)}")
 
     def _convert_to_csv(self, data: dict) -> str:
+        """Convert user data to CSV format"""
         output = StringIO()
         writer = csv.writer(output)
 
@@ -72,123 +111,169 @@ class GDPRCompliance:
         return output.getvalue()
 
     async def anonymize_user_data(self, user_id: str) -> bool:
+        """Anonymize user data for soft deletion (Right to Erasure)"""
         try:
             anonymized_email = f"deleted_user_{user_id[:8]}@anonymized.realum"
             anonymized_username = f"deleted_user_{user_id[:8]}"
 
-            self.supabase.table("users").update({
-                "email": anonymized_email,
-                "username": anonymized_username,
-                "full_name": "Deleted User",
-                "bio": None,
-                "location": None,
-                "website": None,
-                "social_links": None,
-                "phone_number": None,
-                "deleted_at": datetime.now().isoformat()
-            }).eq("id", user_id).execute()
+            await db.users.update_one(
+                {"id": user_id},
+                {"$set": {
+                    "email": anonymized_email,
+                    "username": anonymized_username,
+                    "full_name": "Deleted User",
+                    "bio": None,
+                    "location": None,
+                    "website": None,
+                    "social_links": None,
+                    "phone_number": None,
+                    "avatar_url": None,
+                    "deleted_at": datetime.now(),
+                    "is_deleted": True
+                }}
+            )
 
             return True
         except Exception as e:
             raise Exception(f"Failed to anonymize user data: {str(e)}")
 
     async def delete_user_account(self, user_id: str, hard_delete: bool = False) -> bool:
+        """Delete user account (soft or hard delete)"""
         try:
             if hard_delete:
-                self.supabase.table("user_achievements").delete().eq("user_id", user_id).execute()
-                self.supabase.table("votes").delete().eq("user_id", user_id).execute()
-                self.supabase.table("user_courses").delete().eq("user_id", user_id).execute()
-                self.supabase.table("transactions").delete().eq("user_id", user_id).execute()
-                self.supabase.table("projects").delete().eq("creator_id", user_id).execute()
-                self.supabase.table("proposals").delete().eq("creator_id", user_id).execute()
-                self.supabase.table("users").delete().eq("id", user_id).execute()
+                # Hard delete - remove all user data
+                await db.user_achievements.delete_many({"user_id": user_id})
+                await db.votes.delete_many({"user_id": user_id})
+                await db.user_courses.delete_many({"user_id": user_id})
+                await db.daily_rewards.delete_many({"user_id": user_id})
+                await db.job_applications.delete_many({"user_id": user_id})
+                await db.messages.delete_many({"$or": [{"sender_id": user_id}, {"recipient_id": user_id}]})
+                await db.user_consent.delete_many({"user_id": user_id})
+                await db.consent_history.delete_many({"user_id": user_id})
+                await db.data_access_log.delete_many({"user_id": user_id})
+                await db.users.delete_one({"id": user_id})
             else:
+                # Soft delete - anonymize data
                 await self.anonymize_user_data(user_id)
 
             return True
         except Exception as e:
             raise Exception(f"Failed to delete user account: {str(e)}")
 
-    async def log_data_access(self, user_id: str, accessed_by: str, purpose: str):
+    async def log_data_access(self, user_id: str, accessed_by: str, purpose: str, ip_address: Optional[str] = None):
+        """Log data access for audit trail"""
         try:
-            self.supabase.table("data_access_log").insert({
+            await db.data_access_log.insert_one({
                 "user_id": user_id,
                 "accessed_by": accessed_by,
                 "purpose": purpose,
-                "accessed_at": datetime.now().isoformat()
-            }).execute()
+                "ip_address": ip_address,
+                "accessed_at": datetime.now()
+            })
         except Exception:
             pass
 
     async def get_consent_status(self, user_id: str) -> Dict[str, bool]:
+        """Get user consent status for various data processing activities"""
         try:
-            consent = self.supabase.table("user_consent").select("*").eq("user_id", user_id).execute()
+            consent = await db.user_consent.find_one({"user_id": user_id}, {"_id": 0})
 
-            if consent.data:
-                return consent.data[0]
+            if consent:
+                return consent
             else:
                 return {
+                    "user_id": user_id,
                     "marketing_emails": False,
                     "data_analytics": False,
                     "third_party_sharing": False,
-                    "cookie_consent": False
+                    "cookie_consent": False,
+                    "personalization": False,
+                    "newsletter": False
                 }
         except Exception:
             return {}
 
     async def update_consent(self, user_id: str, consent_type: str, value: bool) -> bool:
+        """Update user consent for a specific processing activity"""
         try:
-            existing = self.supabase.table("user_consent").select("*").eq("user_id", user_id).execute()
+            existing = await db.user_consent.find_one({"user_id": user_id})
 
-            if existing.data:
-                self.supabase.table("user_consent").update({
-                    consent_type: value,
-                    "updated_at": datetime.now().isoformat()
-                }).eq("user_id", user_id).execute()
+            if existing:
+                await db.user_consent.update_one(
+                    {"user_id": user_id},
+                    {"$set": {
+                        consent_type: value,
+                        "updated_at": datetime.now()
+                    }}
+                )
             else:
-                self.supabase.table("user_consent").insert({
+                await db.user_consent.insert_one({
                     "user_id": user_id,
                     consent_type: value,
-                    "created_at": datetime.now().isoformat(),
-                    "updated_at": datetime.now().isoformat()
-                }).execute()
+                    "created_at": datetime.now(),
+                    "updated_at": datetime.now()
+                })
 
-            self.supabase.table("consent_history").insert({
+            # Log consent change history
+            await db.consent_history.insert_one({
                 "user_id": user_id,
                 "consent_type": consent_type,
                 "value": value,
-                "changed_at": datetime.now().isoformat()
-            }).execute()
+                "changed_at": datetime.now()
+            })
 
             return True
         except Exception as e:
             raise Exception(f"Failed to update consent: {str(e)}")
 
     async def get_data_retention_info(self, user_id: str) -> Dict:
+        """Get data retention policy information"""
         return {
-            "user_data_retention_days": 2555,
-            "inactive_account_deletion_days": 730,
+            "user_data_retention_days": 2555,  # ~7 years
+            "inactive_account_deletion_days": 730,  # 2 years
             "transaction_history_retention_years": 7,
             "can_request_deletion": True,
             "can_export_data": True,
-            "data_portability": True
+            "data_portability": True,
+            "data_controller": "REALUM Platform",
+            "data_protection_officer": "dpo@realum.io",
+            "legal_basis": ["consent", "legitimate_interest", "contract_performance"]
         }
 
     async def schedule_data_deletion(self, user_id: str, deletion_date: datetime) -> bool:
+        """Schedule future data deletion"""
         try:
-            self.supabase.table("scheduled_deletions").insert({
+            await db.scheduled_deletions.insert_one({
                 "user_id": user_id,
-                "scheduled_for": deletion_date.isoformat(),
+                "scheduled_for": deletion_date,
                 "status": "pending",
-                "created_at": datetime.now().isoformat()
-            }).execute()
+                "created_at": datetime.now()
+            })
             return True
         except Exception:
             return False
 
     async def cancel_scheduled_deletion(self, user_id: str) -> bool:
+        """Cancel a scheduled data deletion"""
         try:
-            self.supabase.table("scheduled_deletions").delete().eq("user_id", user_id).eq("status", "pending").execute()
-            return True
+            result = await db.scheduled_deletions.delete_many(
+                {"user_id": user_id, "status": "pending"}
+            )
+            return result.deleted_count > 0
         except Exception:
             return False
+
+    async def get_data_access_history(self, user_id: str, days: int = 30) -> List[Dict]:
+        """Get history of who accessed user's data"""
+        try:
+            cutoff = datetime.now() - timedelta(days=days)
+            history = await db.data_access_log.find(
+                {"user_id": user_id, "accessed_at": {"$gte": cutoff}},
+                {"_id": 0}
+            ).sort("accessed_at", -1).to_list(100)
+            return history
+        except Exception:
+            return []
+
+# Global instance
+gdpr_compliance = GDPRCompliance()
