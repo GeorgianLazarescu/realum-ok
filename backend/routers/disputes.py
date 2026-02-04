@@ -496,38 +496,3 @@ async def apply_as_arbitrator(current_user: dict = Depends(get_current_user)):
         raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
-
-@router.get("/stats")
-async def get_dispute_stats():
-    """Get dispute statistics"""
-    try:
-        total = await db.disputes.count_documents({})
-
-        # Status breakdown
-        status_pipeline = [
-            {"$group": {"_id": "$status", "count": {"$sum": 1}}}
-        ]
-        status_result = await db.disputes.aggregate(status_pipeline).to_list(None)
-        status_breakdown = {item["_id"]: item["count"] for item in status_result if item["_id"]}
-
-        # Type breakdown
-        type_pipeline = [
-            {"$group": {"_id": "$dispute_type", "count": {"$sum": 1}}}
-        ]
-        type_result = await db.disputes.aggregate(type_pipeline).to_list(None)
-        type_breakdown = {item["_id"]: item["count"] for item in type_result if item["_id"]}
-
-        # Resolution rate
-        resolved = status_breakdown.get("resolved", 0)
-        resolution_rate = round(resolved / total * 100, 2) if total > 0 else 0
-
-        return {
-            "stats": {
-                "total_disputes": total,
-                "status_breakdown": status_breakdown,
-                "type_breakdown": type_breakdown,
-                "resolution_rate": resolution_rate
-            }
-        }
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
