@@ -5,7 +5,7 @@ from pydantic import BaseModel
 import uuid
 
 from core.database import db
-from core.auth import get_current_user, admin_required
+from core.auth import get_current_user, require_admin
 from services.token_service import create_transaction
 
 router = APIRouter(prefix="/advanced", tags=["Advanced Features"])

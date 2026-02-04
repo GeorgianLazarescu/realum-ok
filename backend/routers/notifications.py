@@ -5,7 +5,7 @@ from pydantic import BaseModel
 import uuid
 
 from core.database import db
-from core.auth import get_current_user, admin_required
+from core.auth import get_current_user, require_admin
 from services.notification_service import (
     send_notification,
     send_notification_from_template,
@@ -195,7 +195,7 @@ async def send_test_notification(current_user: dict = Depends(get_current_user))
 @router.post("/broadcast")
 async def broadcast_notification(
     notification: NotificationCreate,
-    current_user: dict = Depends(admin_required)
+    current_user: dict = Depends(require_admin)
 ):
     """Broadcast notification to all users (admin only)"""
     # Get all user IDs

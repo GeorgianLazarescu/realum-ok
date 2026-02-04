@@ -5,7 +5,7 @@ from pydantic import BaseModel
 import uuid
 
 from core.database import db
-from core.auth import get_current_user, admin_required
+from core.auth import get_current_user, require_admin
 
 router = APIRouter(tags=["Admin"])
 
@@ -145,7 +145,7 @@ class SeasonalRewardCreate(BaseModel):
 @router.post("/seasonal-rewards")
 async def create_seasonal_reward(
     reward: SeasonalRewardCreate,
-    current_user: dict = Depends(admin_required)
+    current_user: dict = Depends(require_admin)
 ):
     """Create a new seasonal reward event (admin only)"""
     seasonal_id = str(uuid.uuid4())
@@ -169,7 +169,7 @@ async def create_seasonal_reward(
     }
 
 @router.get("/seasonal-rewards")
-async def list_all_seasonal_rewards(current_user: dict = Depends(admin_required)):
+async def list_all_seasonal_rewards(current_user: dict = Depends(require_admin)):
     """List all seasonal rewards (admin only)"""
     rewards = await db.seasonal_rewards.find({}, {"_id": 0}).sort("created_at", -1).to_list(50)
 
@@ -179,7 +179,7 @@ async def list_all_seasonal_rewards(current_user: dict = Depends(admin_required)
 async def update_seasonal_reward(
     reward_id: str,
     is_active: Optional[bool] = None,
-    current_user: dict = Depends(admin_required)
+    current_user: dict = Depends(require_admin)
 ):
     """Update seasonal reward status (admin only)"""
     update_data = {}
