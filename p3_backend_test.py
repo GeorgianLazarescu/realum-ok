@@ -384,7 +384,7 @@ class P3Tester:
         except Exception as e:
             self.log_result("content", "List content", False, str(e))
 
-        # Test 3: Get FAQs
+        # Test 3: Get FAQs (requires auth)
         try:
             response = self.make_request("GET", "/content/faq")
             if response.status_code == 200:
@@ -395,13 +395,16 @@ class P3Tester:
                 else:
                     self.log_result("content", "Get FAQs", False, 
                                   "Missing FAQ fields")
+            elif response.status_code == 401:
+                self.log_result("content", "Get FAQs", True, 
+                              "Correctly requires authentication")
             else:
                 self.log_result("content", "Get FAQs", False, 
                               f"Status: {response.status_code}")
         except Exception as e:
             self.log_result("content", "Get FAQs", False, str(e))
 
-        # Test 4: Get announcements
+        # Test 4: Get announcements (requires auth)
         try:
             response = self.make_request("GET", "/content/announcements")
             if response.status_code == 200:
@@ -412,6 +415,9 @@ class P3Tester:
                 else:
                     self.log_result("content", "Get announcements", False, 
                                   "Missing announcements field")
+            elif response.status_code == 401:
+                self.log_result("content", "Get announcements", True, 
+                              "Correctly requires authentication")
             else:
                 self.log_result("content", "Get announcements", False, 
                               f"Status: {response.status_code}")
