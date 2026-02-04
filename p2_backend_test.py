@@ -20,15 +20,18 @@ class P2ModuleTester:
         self.session = requests.Session()
         self.auth_token = None
         self.admin_token = None
+        # Use timestamp to make usernames unique
+        import time
+        timestamp = str(int(time.time()))
         self.test_user_data = {
-            "email": "p2test@realum.io",
-            "username": "p2tester",
+            "email": f"p2test{timestamp}@realum.io",
+            "username": f"p2tester{timestamp}",
             "password": "Test123!@#",
             "role": "citizen"
         }
         self.admin_user_data = {
-            "email": "p2admin@realum.io", 
-            "username": "p2admin",
+            "email": f"p2admin{timestamp}@realum.io", 
+            "username": f"p2admin{timestamp}",
             "password": "Admin123!@#",
             "role": "admin"
         }
