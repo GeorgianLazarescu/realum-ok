@@ -243,6 +243,7 @@ app.include_router(search_router, prefix="/api")
 app.include_router(moderation_router, prefix="/api")
 app.include_router(social_router, prefix="/api")
 app.include_router(achievements_router, prefix="/api")
+app.include_router(seo_router)
 
 @app.get("/")
 async def root():
