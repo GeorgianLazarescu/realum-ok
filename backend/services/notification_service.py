@@ -127,7 +127,7 @@ async def send_notification_from_template(
     template = await db.notification_templates.find_one({
         "template_key": template_key,
         "is_active": True
-    })
+    }, {"_id": 0})
 
     if not template:
         return None
