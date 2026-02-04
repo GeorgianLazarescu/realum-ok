@@ -632,25 +632,3 @@ async def get_content_stats(current_user: dict = Depends(require_admin)):
         }
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
-
-@router.get("/categories")
-async def get_content_categories():
-    """Get available content categories"""
-    return {
-        "content_types": [
-            {"key": "page", "name": "Page", "description": "Static pages"},
-            {"key": "announcement", "name": "Announcement", "description": "System announcements"},
-            {"key": "faq", "name": "FAQ", "description": "Frequently asked questions"},
-            {"key": "guide", "name": "Guide", "description": "How-to guides"},
-            {"key": "news", "name": "News", "description": "Platform news and updates"}
-        ],
-        "faq_categories": [
-            "general", "account", "wallet", "courses", "governance", "metaverse", "tokens"
-        ],
-        "announcement_priorities": [
-            {"key": "low", "color": "#10B981"},
-            {"key": "normal", "color": "#3B82F6"},
-            {"key": "high", "color": "#F59E0B"},
-            {"key": "critical", "color": "#EF4444"}
-        ]
-    }
