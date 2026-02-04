@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { 
   Home, Briefcase, Wallet, Vote, Trophy, User, LogOut, Menu, X, 
-  GraduationCap, Layers, ShoppingBag, Play, Users
+  GraduationCap, Layers, ShoppingBag, Play, Users, Search, Award
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useWeb3 } from '../../context/Web3Context';
@@ -22,17 +22,17 @@ const Navbar = () => {
     { path: '/metaverse', icon: Layers, label: t('metaverse') },
     { path: '/jobs', icon: Briefcase, label: t('jobs') },
     { path: '/courses', icon: GraduationCap, label: t('courses') },
-    { path: '/marketplace', icon: ShoppingBag, label: t('marketplace') },
     { path: '/voting', icon: Vote, label: t('voting') },
     { path: '/wallet', icon: Wallet, label: t('wallet') },
-    { path: '/leaderboard', icon: Trophy, label: t('leaderboard') }
+    { path: '/social', icon: Users, label: 'Social' },
+    { path: '/achievements', icon: Award, label: 'Achievements' }
   ];
   
   const mobileNavItems = [
     { path: '/dashboard', icon: Home, label: 'Home' },
-    { path: '/jobs', icon: Briefcase, label: t('jobs') },
-    { path: '/metaverse', icon: Layers, label: 'Map' },
-    { path: '/wallet', icon: Wallet, label: t('wallet') },
+    { path: '/search', icon: Search, label: 'Search' },
+    { path: '/social', icon: Users, label: 'Social' },
+    { path: '/achievements', icon: Award, label: 'Awards' },
     { path: '/profile', icon: User, label: t('profile') }
   ];
   
