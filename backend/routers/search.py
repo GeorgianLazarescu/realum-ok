@@ -1,306 +1,447 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Depends, Query
 from pydantic import BaseModel
 from typing import Optional, List
-from core.auth import get_current_user
-from core.database import db
+from datetime import datetime, timezone, timedelta
+import uuid
+import re
 
-router = APIRouter(prefix="/api/search", tags=["Search"])
+from core.database import db
+from core.auth import get_current_user, require_admin
+
+router = APIRouter(prefix="/search", tags=["Search & Discovery"])
 
 class SearchQuery(BaseModel):
     query: str
-    filters: Optional[dict] = {}
-    sort_by: Optional[str] = "relevance"
+    types: List[str] = []  # users, courses, projects, jobs, proposals
+    filters: Optional[dict] = None
 
-@router.get("/global")
-async def global_search(
-    q: str = Query(..., min_length=2),
-    type: Optional[str] = None,
-    limit: int = Query(50, le=100),
+# ===================== UNIFIED SEARCH =====================
+
+@router.get("/")
+async def unified_search(
+    q: str = Query(..., min_length=2, description="Search query"),
+    types: Optional[str] = Query(None, description="Comma-separated types: users,courses,projects,jobs,proposals"),
+    limit: int = Query(10, le=50),
     current_user: dict = Depends(get_current_user)
 ):
+    """Search across all content types"""
     try:
-        results = {
+        search_types = types.split(",") if types else ["users", "courses", "projects", "jobs", "proposals"]
+        results = {}
+        
+        # Create case-insensitive regex pattern
+        pattern = {"$regex": q, "$options": "i"}
+        
+        if "users" in search_types:
+            users = await db.users.find(
+                {"$or": [
+                    {"username": pattern},
+                    {"full_name": pattern},
+                    {"bio": pattern}
+                ]},
+                {"_id": 0, "password": 0, "two_factor_secret": 0}
+            ).limit(limit).to_list(limit)
+            results["users"] = users
+        
+        if "courses" in search_types:
+            courses = await db.courses.find(
+                {"$or": [
+                    {"title": pattern},
+                    {"description": pattern},
+                    {"category": pattern}
+                ]},
+                {"_id": 0}
+            ).limit(limit).to_list(limit)
+            results["courses"] = courses
+        
+        if "projects" in search_types:
+            projects = await db.projects.find(
+                {"$or": [
+                    {"title": pattern},
+                    {"description": pattern},
+                    {"category": pattern}
+                ]},
+                {"_id": 0}
+            ).limit(limit).to_list(limit)
+            results["projects"] = projects
+        
+        if "jobs" in search_types:
+            jobs = await db.jobs.find(
+                {"$or": [
+                    {"title": pattern},
+                    {"description": pattern},
+                    {"zone": pattern}
+                ]},
+                {"_id": 0}
+            ).limit(limit).to_list(limit)
+            results["jobs"] = jobs
+        
+        if "proposals" in search_types:
+            proposals = await db.proposals.find(
+                {"$or": [
+                    {"title": pattern},
+                    {"description": pattern}
+                ]},
+                {"_id": 0}
+            ).limit(limit).to_list(limit)
+            results["proposals"] = proposals
+        
+        # Count total results
+        total = sum(len(v) for v in results.values())
+        
+        return {
             "query": q,
-            "results": {
-                "users": [],
-                "courses": [],
-                "projects": [],
-                "proposals": [],
-                "jobs": [],
-                "bounties": []
-            },
-            "total_results": 0
+            "results": results,
+            "total": total
         }
-
-        if not type or type == "users":
-            users_result = supabase.table("users").select("id, username, avatar, bio").ilike("username", f"%{q}%").limit(limit).execute()
-            results["results"]["users"] = users_result.data or []
-
-        if not type or type == "courses":
-            courses_result = supabase.table("courses").select("*").or_(f"title.ilike.%{q}%,description.ilike.%{q}%").limit(limit).execute()
-            results["results"]["courses"] = courses_result.data or []
-
-        if not type or type == "projects":
-            projects_result = supabase.table("projects").select("*").or_(f"title.ilike.%{q}%,description.ilike.%{q}%").limit(limit).execute()
-            results["results"]["projects"] = projects_result.data or []
-
-        if not type or type == "proposals":
-            proposals_result = supabase.table("proposals").select("*").or_(f"title.ilike.%{q}%,description.ilike.%{q}%").limit(limit).execute()
-            results["results"]["proposals"] = proposals_result.data or []
-
-        if not type or type == "jobs":
-            jobs_result = supabase.table("jobs").select("*").or_(f"title.ilike.%{q}%,description.ilike.%{q}%").limit(limit).execute()
-            results["results"]["jobs"] = jobs_result.data or []
-
-        if not type or type == "bounties":
-            bounties_result = supabase.table("bounties").select("*").or_(f"title.ilike.%{q}%,description.ilike.%{q}%").limit(limit).execute()
-            results["results"]["bounties"] = bounties_result.data or []
-
-        total = sum(len(v) for v in results["results"].values())
-        results["total_results"] = total
-
-        return results
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-@router.get("/courses")
-async def search_courses(
-    q: Optional[str] = None,
-    category: Optional[str] = None,
-    difficulty: Optional[str] = None,
-    min_rating: Optional[float] = None,
-    current_user: dict = Depends(get_current_user)
-):
-    try:
-        query = supabase.table("courses").select("*")
-
-        if q:
-            query = query.or_(f"title.ilike.%{q}%,description.ilike.%{q}%")
-        if category:
-            query = query.eq("category", category)
-        if difficulty:
-            query = query.eq("difficulty", difficulty)
-        if min_rating:
-            query = query.gte("average_rating", min_rating)
-
-        result = query.order("created_at", desc=True).execute()
-
-        return {"courses": result.data}
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-@router.get("/projects")
-async def search_projects(
-    q: Optional[str] = None,
-    category: Optional[str] = None,
-    status: Optional[str] = None,
-    current_user: dict = Depends(get_current_user)
-):
-    try:
-        query = supabase.table("projects").select("*")
-
-        if q:
-            query = query.or_(f"title.ilike.%{q}%,description.ilike.%{q}%")
-        if category:
-            query = query.eq("category", category)
-        if status:
-            query = query.eq("status", status)
-
-        result = query.order("created_at", desc=True).execute()
-
-        return {"projects": result.data}
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-@router.get("/jobs")
-async def search_jobs(
-    q: Optional[str] = None,
-    job_type: Optional[str] = None,
-    min_budget: Optional[float] = None,
-    skills: Optional[List[str]] = Query(None),
-    current_user: dict = Depends(get_current_user)
-):
-    try:
-        query = supabase.table("jobs").select("*")
-
-        if q:
-            query = query.or_(f"title.ilike.%{q}%,description.ilike.%{q}%")
-        if job_type:
-            query = query.eq("job_type", job_type)
-        if min_budget:
-            query = query.gte("budget", min_budget)
-
-        result = query.order("created_at", desc=True).execute()
-
-        if skills and result.data:
-            filtered_results = []
-            for job in result.data:
-                job_skills = job.get("required_skills", [])
-                if any(skill in job_skills for skill in skills):
-                    filtered_results.append(job)
-            return {"jobs": filtered_results}
-
-        return {"jobs": result.data}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 @router.get("/users")
 async def search_users(
-    q: Optional[str] = None,
+    q: str = Query(..., min_length=2),
     role: Optional[str] = None,
-    skills: Optional[List[str]] = Query(None),
+    min_level: Optional[int] = None,
+    skills: Optional[str] = None,
+    skip: int = 0,
+    limit: int = 20,
     current_user: dict = Depends(get_current_user)
 ):
+    """Search users with filters"""
     try:
-        query = supabase.table("users").select("id, username, avatar, bio, role, skills, xp, level")
-
-        if q:
-            query = query.or_(f"username.ilike.%{q}%,bio.ilike.%{q}%")
-        if role:
-            query = query.eq("role", role)
-
-        result = query.order("xp", desc=True).execute()
-
-        if skills and result.data:
-            filtered_results = []
-            for user in result.data:
-                user_skills = user.get("skills", [])
-                if any(skill in user_skills for skill in skills):
-                    filtered_results.append(user)
-            return {"users": filtered_results}
-
-        return {"users": result.data}
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-@router.get("/tags")
-async def search_by_tags(
-    tags: List[str] = Query(...),
-    content_type: Optional[str] = None,
-    current_user: dict = Depends(get_current_user)
-):
-    try:
-        results = {
-            "tags": tags,
-            "results": []
+        pattern = {"$regex": q, "$options": "i"}
+        query = {
+            "$or": [
+                {"username": pattern},
+                {"full_name": pattern},
+                {"bio": pattern}
+            ]
         }
-
-        if not content_type or content_type == "courses":
-            courses_result = supabase.table("content_tags").select("*, courses(*)").in_("tag", tags).eq("content_type", "course").execute()
-            results["results"].extend([{"type": "course", "data": t.get("courses")} for t in courses_result.data or [] if t.get("courses")])
-
-        if not content_type or content_type == "projects":
-            projects_result = supabase.table("content_tags").select("*, projects(*)").in_("tag", tags).eq("content_type", "project").execute()
-            results["results"].extend([{"type": "project", "data": t.get("projects")} for t in projects_result.data or [] if t.get("projects")])
-
-        return results
+        
+        if role:
+            query["role"] = role
+        if min_level:
+            query["level"] = {"$gte": min_level}
+        if skills:
+            skill_list = skills.split(",")
+            query["skills"] = {"$in": skill_list}
+        
+        users = await db.users.find(
+            query,
+            {"_id": 0, "password": 0, "two_factor_secret": 0, "two_factor_backup_codes": 0}
+        ).skip(skip).limit(limit).to_list(limit)
+        
+        total = await db.users.count_documents(query)
+        
+        return {"users": users, "total": total}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+@router.get("/courses")
+async def search_courses(
+    q: str = Query(..., min_length=2),
+    category: Optional[str] = None,
+    difficulty: Optional[str] = None,
+    min_xp: Optional[int] = None,
+    skip: int = 0,
+    limit: int = 20
+):
+    """Search courses with filters"""
+    try:
+        pattern = {"$regex": q, "$options": "i"}
+        query = {
+            "$or": [
+                {"title": pattern},
+                {"description": pattern}
+            ]
+        }
+        
+        if category:
+            query["category"] = category
+        if difficulty:
+            query["difficulty"] = difficulty
+        if min_xp:
+            query["xp_reward"] = {"$gte": min_xp}
+        
+        courses = await db.courses.find(
+            query,
+            {"_id": 0}
+        ).skip(skip).limit(limit).to_list(limit)
+        
+        total = await db.courses.count_documents(query)
+        
+        return {"courses": courses, "total": total}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@router.get("/projects")
+async def search_projects(
+    q: str = Query(..., min_length=2),
+    status: Optional[str] = None,
+    category: Optional[str] = None,
+    looking_for: Optional[str] = None,
+    skip: int = 0,
+    limit: int = 20
+):
+    """Search projects with filters"""
+    try:
+        pattern = {"$regex": q, "$options": "i"}
+        query = {
+            "$or": [
+                {"title": pattern},
+                {"description": pattern}
+            ]
+        }
+        
+        if status:
+            query["status"] = status
+        if category:
+            query["category"] = category
+        if looking_for:
+            query["looking_for"] = {"$in": [looking_for]}
+        
+        projects = await db.projects.find(
+            query,
+            {"_id": 0}
+        ).skip(skip).limit(limit).to_list(limit)
+        
+        total = await db.projects.count_documents(query)
+        
+        return {"projects": projects, "total": total}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@router.get("/jobs")
+async def search_jobs(
+    q: str = Query(..., min_length=2),
+    zone: Optional[str] = None,
+    status: Optional[str] = "open",
+    min_reward: Optional[float] = None,
+    skip: int = 0,
+    limit: int = 20
+):
+    """Search jobs with filters"""
+    try:
+        pattern = {"$regex": q, "$options": "i"}
+        query = {
+            "$or": [
+                {"title": pattern},
+                {"description": pattern}
+            ]
+        }
+        
+        if zone:
+            query["zone"] = zone
+        if status:
+            query["status"] = status
+        if min_reward:
+            query["reward"] = {"$gte": min_reward}
+        
+        jobs = await db.jobs.find(
+            query,
+            {"_id": 0}
+        ).skip(skip).limit(limit).to_list(limit)
+        
+        total = await db.jobs.count_documents(query)
+        
+        return {"jobs": jobs, "total": total}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+# ===================== SUGGESTIONS & AUTOCOMPLETE =====================
+
+@router.get("/suggest")
+async def get_search_suggestions(
+    q: str = Query(..., min_length=1),
+    limit: int = 5,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get search suggestions for autocomplete"""
+    try:
+        pattern = {"$regex": f"^{re.escape(q)}", "$options": "i"}
+        suggestions = []
+        
+        # Get user suggestions
+        users = await db.users.find(
+            {"username": pattern},
+            {"_id": 0, "username": 1}
+        ).limit(limit).to_list(limit)
+        suggestions.extend([{"type": "user", "text": u["username"]} for u in users])
+        
+        # Get course suggestions
+        courses = await db.courses.find(
+            {"title": pattern},
+            {"_id": 0, "title": 1}
+        ).limit(limit).to_list(limit)
+        suggestions.extend([{"type": "course", "text": c["title"]} for c in courses])
+        
+        # Get project suggestions
+        projects = await db.projects.find(
+            {"title": pattern},
+            {"_id": 0, "title": 1}
+        ).limit(limit).to_list(limit)
+        suggestions.extend([{"type": "project", "text": p["title"]} for p in projects])
+        
+        return {"suggestions": suggestions[:limit * 2]}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+# ===================== TRENDING & POPULAR =====================
 
 @router.get("/trending")
-async def get_trending_content(
-    content_type: Optional[str] = None,
+async def get_trending(
+    period: str = Query("week", regex="^(day|week|month)$"),
     current_user: dict = Depends(get_current_user)
 ):
+    """Get trending content"""
     try:
-        trending = {
-            "courses": [],
-            "projects": [],
-            "proposals": []
+        if period == "day":
+            cutoff = datetime.now(timezone.utc) - timedelta(days=1)
+        elif period == "week":
+            cutoff = datetime.now(timezone.utc) - timedelta(weeks=1)
+        else:
+            cutoff = datetime.now(timezone.utc) - timedelta(days=30)
+        
+        cutoff_str = cutoff.isoformat()
+        
+        # Trending courses (most enrolled)
+        courses = await db.courses.find(
+            {},
+            {"_id": 0, "id": 1, "title": 1, "category": 1}
+        ).sort("enrolled_count", -1).limit(5).to_list(5)
+        
+        # Active proposals
+        proposals = await db.proposals.find(
+            {"status": "active"},
+            {"_id": 0, "id": 1, "title": 1, "voter_count": 1}
+        ).sort("voter_count", -1).limit(5).to_list(5)
+        
+        # New projects
+        projects = await db.projects.find(
+            {"created_at": {"$gte": cutoff_str}},
+            {"_id": 0, "id": 1, "title": 1}
+        ).sort("created_at", -1).limit(5).to_list(5)
+        
+        # Active bounties
+        bounties = await db.bounties.find(
+            {"status": "open"},
+            {"_id": 0, "id": 1, "title": 1, "reward_amount": 1}
+        ).sort("reward_amount", -1).limit(5).to_list(5)
+        
+        return {
+            "trending": {
+                "courses": courses,
+                "proposals": proposals,
+                "projects": projects,
+                "bounties": bounties
+            },
+            "period": period
         }
-
-        if not content_type or content_type == "courses":
-            courses_result = supabase.table("courses").select("*").order("views", desc=True).limit(10).execute()
-            trending["courses"] = courses_result.data or []
-
-        if not content_type or content_type == "projects":
-            projects_result = supabase.table("projects").select("*").order("likes", desc=True).limit(10).execute()
-            trending["projects"] = projects_result.data or []
-
-        if not content_type or content_type == "proposals":
-            proposals_result = supabase.table("proposals").select("*").order("votes_for", desc=True).limit(10).execute()
-            trending["proposals"] = proposals_result.data or []
-
-        return {"trending": trending}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-@router.get("/recommendations")
-async def get_recommendations(current_user: dict = Depends(get_current_user)):
+@router.get("/discover")
+async def discover_content(current_user: dict = Depends(get_current_user)):
+    """Personalized content discovery based on user profile"""
     try:
-        user_result = supabase.table("users").select("skills, role").eq("id", current_user["id"]).execute()
-
-        if not user_result.data:
-            return {"recommendations": []}
-
-        user_skills = user_result.data[0].get("skills", [])
-
-        recommended_courses = []
+        user_id = current_user["id"]
+        user_skills = current_user.get("skills", [])
+        user_role = current_user.get("role", "citizen")
+        
+        recommendations = {}
+        
+        # Courses matching user skills/interests
         if user_skills:
-            for skill in user_skills[:3]:
-                courses_result = supabase.table("courses").select("*").contains("skills_taught", [skill]).limit(5).execute()
-                if courses_result.data:
-                    recommended_courses.extend(courses_result.data)
-
-        recommended_jobs = []
+            recommended_courses = await db.courses.find(
+                {"tags": {"$in": user_skills}},
+                {"_id": 0}
+            ).limit(5).to_list(5)
+        else:
+            recommended_courses = await db.courses.find(
+                {},
+                {"_id": 0}
+            ).sort("enrolled_count", -1).limit(5).to_list(5)
+        recommendations["courses"] = recommended_courses
+        
+        # Jobs matching skills
+        recommended_jobs = await db.jobs.find(
+            {"status": "open"},
+            {"_id": 0}
+        ).limit(5).to_list(5)
+        recommendations["jobs"] = recommended_jobs
+        
+        # Projects looking for user's role/skills
+        recommended_projects = await db.projects.find(
+            {"status": "active"},
+            {"_id": 0}
+        ).limit(5).to_list(5)
+        recommendations["projects"] = recommended_projects
+        
+        # Users with similar interests
         if user_skills:
-            for skill in user_skills[:3]:
-                jobs_result = supabase.table("jobs").select("*").contains("required_skills", [skill]).limit(5).execute()
-                if jobs_result.data:
-                    recommended_jobs.extend(jobs_result.data)
+            similar_users = await db.users.find(
+                {
+                    "skills": {"$in": user_skills},
+                    "id": {"$ne": user_id}
+                },
+                {"_id": 0, "username": 1, "avatar_url": 1, "skills": 1, "id": 1}
+            ).limit(5).to_list(5)
+        else:
+            similar_users = []
+        recommendations["users"] = similar_users
+        
+        return {"recommendations": recommendations}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
-        return {
-            "recommendations": {
-                "courses": recommended_courses[:10],
-                "jobs": recommended_jobs[:10]
+# ===================== SEARCH HISTORY =====================
+
+@router.get("/history")
+async def get_search_history(
+    limit: int = 10,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get user's search history"""
+    try:
+        history = await db.search_history.find(
+            {"user_id": current_user["id"]},
+            {"_id": 0}
+        ).sort("searched_at", -1).limit(limit).to_list(limit)
+        
+        return {"history": history}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@router.delete("/history")
+async def clear_search_history(current_user: dict = Depends(get_current_user)):
+    """Clear user's search history"""
+    try:
+        result = await db.search_history.delete_many({"user_id": current_user["id"]})
+        return {"message": f"Cleared {result.deleted_count} searches"}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@router.get("/filters")
+async def get_search_filters():
+    """Get available search filters"""
+    return {
+        "filters": {
+            "users": {
+                "roles": ["citizen", "expert", "educator", "entrepreneur", "admin"],
+                "levels": list(range(1, 101)),
+                "skills": ["programming", "design", "marketing", "finance", "legal", "community"]
+            },
+            "courses": {
+                "categories": ["blockchain", "programming", "business", "design", "finance"],
+                "difficulty": ["beginner", "intermediate", "advanced"]
+            },
+            "projects": {
+                "status": ["active", "completed", "paused"],
+                "categories": ["defi", "nft", "infrastructure", "community", "education"]
+            },
+            "jobs": {
+                "zones": ["education", "tech", "business", "creative", "community", "governance"],
+                "status": ["open", "in_progress", "completed"]
             }
         }
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-@router.post("/save-search")
-async def save_search(
-    search_query: SearchQuery,
-    current_user: dict = Depends(get_current_user)
-):
-    try:
-        data = {
-            "user_id": current_user["id"],
-            "query": search_query.query,
-            "filters": search_query.filters,
-            "sort_by": search_query.sort_by
-        }
-
-        result = supabase.table("saved_searches").insert(data).execute()
-
-        return {"message": "Search saved", "saved_search": result.data[0]}
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-@router.get("/saved-searches")
-async def get_saved_searches(current_user: dict = Depends(get_current_user)):
-    try:
-        result = supabase.table("saved_searches").select("*").eq("user_id", current_user["id"]).execute()
-        return {"saved_searches": result.data}
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-@router.get("/autocomplete")
-async def autocomplete(
-    q: str = Query(..., min_length=2),
-    type: Optional[str] = "all"
-):
-    try:
-        suggestions = []
-
-        if type in ["all", "users"]:
-            users = supabase.table("users").select("username").ilike("username", f"{q}%").limit(5).execute()
-            suggestions.extend([{"type": "user", "value": u["username"]} for u in users.data or []])
-
-        if type in ["all", "courses"]:
-            courses = supabase.table("courses").select("title").ilike("title", f"{q}%").limit(5).execute()
-            suggestions.extend([{"type": "course", "value": c["title"]} for c in courses.data or []])
-
-        return {"suggestions": suggestions[:10]}
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    }
