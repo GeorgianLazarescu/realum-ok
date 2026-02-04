@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException
 from typing import Optional
-from backend.core.auth import require_admin
-from backend.core.backup import database_backup
-from backend.core.logging import error_tracker, get_logger
-from backend.core.rate_limiter import rate_limiter
+from core.auth import require_admin
+from core.backup import database_backup
+from core.logging import error_tracker, get_logger
+from core.rate_limiter import rate_limiter
 from datetime import datetime, timedelta
 import psutil
 import os

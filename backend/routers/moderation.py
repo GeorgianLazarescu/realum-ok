@@ -2,8 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from typing import Optional, List
 from datetime import datetime, timedelta
-from backend.core.auth import get_current_user
-from backend.core.database import supabase
+from core.auth import get_current_user
+from core.database import supabase
 
 router = APIRouter(prefix="/api/moderation", tags=["Moderation"])
 

@@ -2,8 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 from datetime import datetime, timedelta
-from backend.core.auth import get_current_user, require_role
-from backend.core.database import supabase
+from core.auth import get_current_user, require_role
+from core.database import supabase
 
 router = APIRouter(prefix="/api/analytics", tags=["Analytics"])
 

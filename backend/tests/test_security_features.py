@@ -1,16 +1,16 @@
 import pytest
 from fastapi.testclient import TestClient
 from backend.server import app
-from backend.core.rate_limiter import rate_limiter
-from backend.core.two_factor import two_factor_auth
-from backend.core.validation import (
+from core.rate_limiter import rate_limiter
+from core.two_factor import two_factor_auth
+from core.validation import (
     UserRegistrationSchema,
     CourseCreateSchema,
     MessageSchema,
     sanitize_sql_input,
     validate_uuid
 )
-from backend.core.security import generate_secure_token, hash_sensitive_data, verify_hash
+from core.security import generate_secure_token, hash_sensitive_data, verify_hash
 import asyncio
 
 client = TestClient(app)

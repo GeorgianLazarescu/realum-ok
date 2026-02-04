@@ -4,8 +4,8 @@ from typing import Optional, List
 from datetime import datetime
 import secrets
 import hashlib
-from backend.core.auth import get_current_user
-from backend.core.database import supabase
+from core.auth import get_current_user
+from core.database import supabase
 
 router = APIRouter(prefix="/api/partners", tags=["Partners"])
 

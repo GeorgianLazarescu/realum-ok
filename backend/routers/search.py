@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from typing import Optional, List
-from backend.core.auth import get_current_user
-from backend.core.database import supabase
+from core.auth import get_current_user
+from core.database import supabase
 
 router = APIRouter(prefix="/api/search", tags=["Search"])
 
