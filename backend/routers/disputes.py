@@ -58,6 +58,75 @@ async def create_dispute(dispute: DisputeCreate, current_user: dict = Depends(ge
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
+@router.get("/stats")
+async def get_dispute_stats():
+    """Get dispute statistics"""
+    try:
+        total = await db.disputes.count_documents({})
+
+        # Status breakdown
+        status_pipeline = [
+            {"$group": {"_id": "$status", "count": {"$sum": 1}}}
+        ]
+        status_result = await db.disputes.aggregate(status_pipeline).to_list(None)
+        status_breakdown = {item["_id"]: item["count"] for item in status_result if item["_id"]}
+
+        # Type breakdown
+        type_pipeline = [
+            {"$group": {"_id": "$dispute_type", "count": {"$sum": 1}}}
+        ]
+        type_result = await db.disputes.aggregate(type_pipeline).to_list(None)
+        type_breakdown = {item["_id"]: item["count"] for item in type_result if item["_id"]}
+
+        # Resolution rate
+        resolved = status_breakdown.get("resolved", 0)
+        resolution_rate = round(resolved / total * 100, 2) if total > 0 else 0
+
+        return {
+            "stats": {
+                "total_disputes": total,
+                "status_breakdown": status_breakdown,
+                "type_breakdown": type_breakdown,
+                "resolution_rate": resolution_rate
+            }
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@router.get("/my-disputes")
+async def get_my_disputes(current_user: dict = Depends(get_current_user)):
+    """Get user's disputes"""
+    try:
+        user_id = current_user["id"]
+
+        # Disputes I initiated
+        initiated = await db.disputes.find(
+            {"initiator_id": user_id},
+            {"_id": 0}
+        ).sort("created_at", -1).to_list(50)
+
+        # Disputes I'm arbitrating
+        arbitrating_assignments = await db.dispute_arbitrators.find(
+            {"arbitrator_id": user_id},
+            {"_id": 0, "dispute_id": 1}
+        ).to_list(50)
+
+        arbitrating_ids = [a["dispute_id"] for a in arbitrating_assignments]
+        arbitrating = []
+        
+        if arbitrating_ids:
+            arbitrating = await db.disputes.find(
+                {"id": {"$in": arbitrating_ids}},
+                {"_id": 0}
+            ).to_list(50)
+
+        return {
+            "initiated_disputes": initiated,
+            "arbitrating_disputes": arbitrating
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
 @router.get("/list")
 async def list_disputes(
     status: Optional[str] = None,
