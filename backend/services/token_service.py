@@ -3,6 +3,50 @@ from core.config import TOKEN_BURN_RATE
 from datetime import datetime, timezone
 import uuid
 
+class TokenService:
+    """Token service class for compatibility with routers"""
+    
+    async def burn_tokens(self, amount: float, reason: str):
+        return await burn_tokens(amount, reason)
+    
+    async def award_badge(self, user_id: str, badge_id: str):
+        return await award_badge(user_id, badge_id)
+    
+    async def add_xp(self, user_id: str, xp_amount: int):
+        return await add_xp(user_id, xp_amount)
+    
+    async def create_transaction(self, user_id: str, tx_type: str, amount: float, description: str, burned: float = 0):
+        return await create_transaction(user_id, tx_type, amount, description, burned)
+    
+    async def get_token_stats(self):
+        return await get_token_stats()
+    
+    async def transfer_tokens(self, from_user_id: str, to_user_id: str, amount: float, description: str = "Transfer"):
+        """Transfer tokens between users with burn"""
+        burn_amount = amount * TOKEN_BURN_RATE
+        net_amount = amount - burn_amount
+        
+        # Deduct from sender
+        await db.users.update_one(
+            {"id": from_user_id},
+            {"$inc": {"realum_balance": -amount}}
+        )
+        
+        # Add to recipient
+        await db.users.update_one(
+            {"id": to_user_id},
+            {"$inc": {"realum_balance": net_amount}}
+        )
+        
+        # Record burn
+        await burn_tokens(burn_amount, f"Transfer burn: {from_user_id} -> {to_user_id}")
+        
+        # Create transactions
+        await create_transaction(from_user_id, "debit", amount, description, burn_amount)
+        await create_transaction(to_user_id, "credit", net_amount, description, 0)
+        
+        return {"transferred": net_amount, "burned": burn_amount}
+
 async def burn_tokens(amount: float, reason: str):
     """Record token burn in the database"""
     burn_record = {
