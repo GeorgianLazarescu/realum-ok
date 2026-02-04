@@ -10,7 +10,7 @@ from core.auth import get_current_user, require_admin
 from services.token_service import TokenService
 from services.notification_service import send_notification
 
-router = APIRouter(prefix="/api/dao", tags=["DAO & Governance"])
+router = APIRouter(prefix="/dao", tags=["DAO & Governance"])
 token_service = TokenService()
 
 # ===================== MODELS =====================
