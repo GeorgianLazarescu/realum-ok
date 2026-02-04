@@ -3,6 +3,7 @@ export { default as LoginPage } from './LoginPage';
 export { default as RegisterPage } from './RegisterPage';
 export { default as DashboardPage } from './DashboardPage';
 export { default as MetaversePage } from './MetaversePage';
+export { default as Metaverse3DPage } from './Metaverse3DPage';
 export { default as JobsPage } from './JobsPage';
 export { default as CoursesPage } from './CoursesPage';
 export { default as MarketplacePage } from './MarketplacePage';
