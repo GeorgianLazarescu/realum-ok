@@ -19,6 +19,7 @@ import {
   RegisterPage,
   DashboardPage,
   MetaversePage,
+  Metaverse3DPage,
   JobsPage,
   CoursesPage,
   MarketplacePage,
