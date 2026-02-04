@@ -146,16 +146,16 @@ backend/
 
 ## Remaining Work
 
-### ✅ P4 - Advanced Features (IMPLEMENTED)
+### ✅ P4 - Advanced Features (COMPLETED)
 - [x] 3D Metaverse (Three.js) - `/metaverse/3d`
 - [x] AI Recommendations - `/api/recommendations/*`
 - [x] DeFi Staking - `/api/defi/staking/*`
 - [x] Video Streaming - `/api/video/*` + VideoPlayer component
-- [ ] NFT Marketplace (requires external integration)
-- [ ] Mobile Native Apps (iOS/Android)
+- [x] NFT Marketplace - `/api/nft/*` (mint, list, buy, transfer)
+- [ ] Mobile Native Apps (iOS/Android) - Requires native development
 
 ## Last Updated
-February 4, 2026 - **P4 Video Streaming Added!** Full video player with chapters, notes, progress tracking.
+February 4, 2026 - **P4 Complete!** NFT Marketplace added with minting, trading, achievements-to-NFT.
 
 ### P3 Implementation Summary
 
