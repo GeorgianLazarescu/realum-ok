@@ -1,195 +1,359 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, HTTPException, Depends, Query
 from pydantic import BaseModel
-from typing import Optional
-from datetime import datetime
-from core.auth import get_current_user
-from core.database import db
+from typing import Optional, List
+from datetime import datetime, timezone, timedelta
+import uuid
 
-router = APIRouter(prefix="/api/social", tags=["Social"])
+from core.database import db
+from core.auth import get_current_user
+from services.notification_service import send_notification
+
+router = APIRouter(prefix="/social", tags=["Social Features"])
 
 class CommentCreate(BaseModel):
-    content_type: str
-    content_id: str
     content: str
-    parent_comment_id: Optional[str] = None
+    parent_id: Optional[str] = None  # For nested comments
 
-class PostCreate(BaseModel):
-    content: str
-    media_urls: Optional[list] = []
+class ReactionCreate(BaseModel):
+    reaction_type: str = "like"  # like, love, celebrate, insightful, curious
+
+# ===================== FOLLOWS =====================
 
 @router.post("/follow/{user_id}")
-async def follow_user(user_id: str, current_user: dict = Depends(get_current_user)):
+async def follow_user(
+    user_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Follow a user"""
     try:
         if user_id == current_user["id"]:
             raise HTTPException(status_code=400, detail="Cannot follow yourself")
 
-        existing_follow = supabase.table("follows").select("*").eq("follower_id", current_user["id"]).eq("following_id", user_id).execute()
+        # Check if user exists
+        target = await db.users.find_one({"id": user_id})
+        if not target:
+            raise HTTPException(status_code=404, detail="User not found")
 
-        if existing_follow.data:
-            raise HTTPException(status_code=400, detail="Already following this user")
-
-        data = {
+        # Check if already following
+        existing = await db.follows.find_one({
             "follower_id": current_user["id"],
             "following_id": user_id
-        }
+        })
 
-        result = supabase.table("follows").insert(data).execute()
+        if existing:
+            raise HTTPException(status_code=400, detail="Already following this user")
 
-        return {
-            "message": "User followed successfully",
-            "follow": result.data[0]
-        }
+        now = datetime.now(timezone.utc).isoformat()
+
+        await db.follows.insert_one({
+            "id": str(uuid.uuid4()),
+            "follower_id": current_user["id"],
+            "following_id": user_id,
+            "created_at": now
+        })
+
+        # Update follower/following counts
+        await db.users.update_one(
+            {"id": current_user["id"]},
+            {"$inc": {"following_count": 1}}
+        )
+        await db.users.update_one(
+            {"id": user_id},
+            {"$inc": {"followers_count": 1}}
+        )
+
+        # Notify the followed user
+        await send_notification(
+            user_id=user_id,
+            title="New Follower",
+            message=f"{current_user['username']} started following you",
+            category="social"
+        )
+
+        return {"message": "Now following user"}
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-@router.delete("/unfollow/{user_id}")
-async def unfollow_user(user_id: str, current_user: dict = Depends(get_current_user)):
+@router.delete("/follow/{user_id}")
+async def unfollow_user(
+    user_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Unfollow a user"""
     try:
-        supabase.table("follows").delete().eq("follower_id", current_user["id"]).eq("following_id", user_id).execute()
+        result = await db.follows.delete_one({
+            "follower_id": current_user["id"],
+            "following_id": user_id
+        })
 
-        return {"message": "User unfollowed successfully"}
+        if result.deleted_count == 0:
+            raise HTTPException(status_code=404, detail="Not following this user")
+
+        # Update counts
+        await db.users.update_one(
+            {"id": current_user["id"]},
+            {"$inc": {"following_count": -1}}
+        )
+        await db.users.update_one(
+            {"id": user_id},
+            {"$inc": {"followers_count": -1}}
+        )
+
+        return {"message": "Unfollowed user"}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 @router.get("/followers/{user_id}")
-async def get_followers(user_id: str):
+async def get_followers(
+    user_id: str,
+    skip: int = 0,
+    limit: int = 20,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get user's followers"""
     try:
-        result = supabase.table("follows").select("follower_id, users(username, avatar)").eq("following_id", user_id).execute()
+        follows = await db.follows.find(
+            {"following_id": user_id},
+            {"_id": 0}
+        ).skip(skip).limit(limit).to_list(limit)
 
+        # Get follower details
         followers = []
-        for follow in result.data if result.data else []:
-            if follow.get("users"):
-                followers.append({
-                    "user_id": follow["follower_id"],
-                    "username": follow["users"]["username"],
-                    "avatar": follow["users"]["avatar"]
+        for follow in follows:
+            user = await db.users.find_one(
+                {"id": follow["follower_id"]},
+                {"_id": 0, "id": 1, "username": 1, "avatar_url": 1, "bio": 1}
+            )
+            if user:
+                # Check if current user follows them back
+                is_following = await db.follows.find_one({
+                    "follower_id": current_user["id"],
+                    "following_id": user["id"]
                 })
+                user["is_following"] = is_following is not None
+                followers.append(user)
 
-        return {"followers": followers, "count": len(followers)}
+        total = await db.follows.count_documents({"following_id": user_id})
+
+        return {"followers": followers, "total": total}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 @router.get("/following/{user_id}")
-async def get_following(user_id: str):
+async def get_following(
+    user_id: str,
+    skip: int = 0,
+    limit: int = 20,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get users that a user is following"""
     try:
-        result = supabase.table("follows").select("following_id, users(username, avatar)").eq("follower_id", user_id).execute()
+        follows = await db.follows.find(
+            {"follower_id": user_id},
+            {"_id": 0}
+        ).skip(skip).limit(limit).to_list(limit)
 
         following = []
-        for follow in result.data if result.data else []:
-            if follow.get("users"):
-                following.append({
-                    "user_id": follow["following_id"],
-                    "username": follow["users"]["username"],
-                    "avatar": follow["users"]["avatar"]
+        for follow in follows:
+            user = await db.users.find_one(
+                {"id": follow["following_id"]},
+                {"_id": 0, "id": 1, "username": 1, "avatar_url": 1, "bio": 1}
+            )
+            if user:
+                is_following = await db.follows.find_one({
+                    "follower_id": current_user["id"],
+                    "following_id": user["id"]
                 })
+                user["is_following"] = is_following is not None
+                following.append(user)
 
-        return {"following": following, "count": len(following)}
+        total = await db.follows.count_documents({"follower_id": user_id})
+
+        return {"following": following, "total": total}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-@router.post("/like")
-async def like_content(
+# ===================== COMMENTS =====================
+
+@router.post("/comments/{content_type}/{content_id}")
+async def add_comment(
     content_type: str,
     content_id: str,
+    comment: CommentCreate,
     current_user: dict = Depends(get_current_user)
 ):
+    """Add a comment to content"""
     try:
-        existing_like = supabase.table("likes").select("*").eq("user_id", current_user["id"]).eq("content_type", content_type).eq("content_id", content_id).execute()
+        valid_types = ["course", "project", "proposal", "job", "bounty", "post"]
+        if content_type not in valid_types:
+            raise HTTPException(status_code=400, detail=f"Invalid content type. Use: {valid_types}")
 
-        if existing_like.data:
-            supabase.table("likes").delete().eq("user_id", current_user["id"]).eq("content_type", content_type).eq("content_id", content_id).execute()
+        comment_id = str(uuid.uuid4())
+        now = datetime.now(timezone.utc).isoformat()
 
-            if content_type == "course":
-                course_result = supabase.table("courses").select("likes").eq("id", content_id).execute()
-                if course_result.data:
-                    current_likes = course_result.data[0].get("likes", 0)
-                    supabase.table("courses").update({"likes": max(0, current_likes - 1)}).eq("id", content_id).execute()
+        comment_data = {
+            "id": comment_id,
+            "content_type": content_type,
+            "content_id": content_id,
+            "author_id": current_user["id"],
+            "content": comment.content,
+            "parent_id": comment.parent_id,
+            "likes_count": 0,
+            "replies_count": 0,
+            "is_edited": False,
+            "is_deleted": False,
+            "created_at": now,
+            "updated_at": now
+        }
 
-            elif content_type == "project":
-                project_result = supabase.table("projects").select("likes").eq("id", content_id).execute()
-                if project_result.data:
-                    current_likes = project_result.data[0].get("likes", 0)
-                    supabase.table("projects").update({"likes": max(0, current_likes - 1)}).eq("id", content_id).execute()
+        await db.comments.insert_one(comment_data)
 
-            return {"message": "Like removed", "liked": False}
+        # Update parent reply count if nested comment
+        if comment.parent_id:
+            await db.comments.update_one(
+                {"id": comment.parent_id},
+                {"$inc": {"replies_count": 1}}
+            )
 
-        else:
-            like_data = {
-                "user_id": current_user["id"],
-                "content_type": content_type,
-                "content_id": content_id
-            }
+        # Add author info to response
+        comment_data["author_username"] = current_user.get("username")
+        comment_data["author_avatar"] = current_user.get("avatar_url")
 
-            supabase.table("likes").insert(like_data).execute()
-
-            if content_type == "course":
-                course_result = supabase.table("courses").select("likes").eq("id", content_id).execute()
-                if course_result.data:
-                    current_likes = course_result.data[0].get("likes", 0)
-                    supabase.table("courses").update({"likes": current_likes + 1}).eq("id", content_id).execute()
-
-            elif content_type == "project":
-                project_result = supabase.table("projects").select("likes").eq("id", content_id).execute()
-                if project_result.data:
-                    current_likes = project_result.data[0].get("likes", 0)
-                    supabase.table("projects").update({"likes": current_likes + 1}).eq("id", content_id).execute()
-
-            return {"message": "Content liked", "liked": True}
+        return comment_data
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-@router.post("/comments")
-async def create_comment(comment: CommentCreate, current_user: dict = Depends(get_current_user)):
+@router.get("/comments/{content_type}/{content_id}")
+async def get_comments(
+    content_type: str,
+    content_id: str,
+    skip: int = 0,
+    limit: int = 20,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get comments for content"""
     try:
-        data = {
-            "user_id": current_user["id"],
-            "content_type": comment.content_type,
-            "content_id": comment.content_id,
-            "content": comment.content,
-            "parent_comment_id": comment.parent_comment_id,
-            "likes": 0
-        }
+        # Get top-level comments
+        comments = await db.comments.find(
+            {
+                "content_type": content_type,
+                "content_id": content_id,
+                "parent_id": None,
+                "is_deleted": False
+            },
+            {"_id": 0}
+        ).sort("created_at", -1).skip(skip).limit(limit).to_list(limit)
 
-        result = supabase.table("comments").insert(data).execute()
+        # Enrich with author info and replies
+        for comment in comments:
+            author = await db.users.find_one(
+                {"id": comment["author_id"]},
+                {"_id": 0, "username": 1, "avatar_url": 1}
+            )
+            if author:
+                comment["author_username"] = author.get("username")
+                comment["author_avatar"] = author.get("avatar_url")
 
-        return {
-            "message": "Comment created",
-            "comment": result.data[0]
-        }
+            # Check if current user liked
+            liked = await db.comment_likes.find_one({
+                "comment_id": comment["id"],
+                "user_id": current_user["id"]
+            })
+            comment["liked_by_me"] = liked is not None
+
+            # Get first few replies
+            replies = await db.comments.find(
+                {"parent_id": comment["id"], "is_deleted": False},
+                {"_id": 0}
+            ).sort("created_at", 1).limit(3).to_list(3)
+
+            for reply in replies:
+                reply_author = await db.users.find_one(
+                    {"id": reply["author_id"]},
+                    {"_id": 0, "username": 1, "avatar_url": 1}
+                )
+                if reply_author:
+                    reply["author_username"] = reply_author.get("username")
+                    reply["author_avatar"] = reply_author.get("avatar_url")
+
+            comment["replies"] = replies
+
+        total = await db.comments.count_documents({
+            "content_type": content_type,
+            "content_id": content_id,
+            "parent_id": None,
+            "is_deleted": False
+        })
+
+        return {"comments": comments, "total": total}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-@router.get("/comments/{content_type}/{content_id}")
-async def get_comments(content_type: str, content_id: str):
+@router.post("/comments/{comment_id}/like")
+async def like_comment(
+    comment_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Like/unlike a comment"""
     try:
-        result = supabase.table("comments").select("*, users(username, avatar)").eq("content_type", content_type).eq("content_id", content_id).eq("is_removed", False).order("created_at", desc=True).execute()
+        existing = await db.comment_likes.find_one({
+            "comment_id": comment_id,
+            "user_id": current_user["id"]
+        })
 
-        comments = []
-        for comment in result.data if result.data else []:
-            comment_data = {**comment}
-            if comment.get("parent_comment_id"):
-                replies_result = supabase.table("comments").select("*, users(username, avatar)").eq("parent_comment_id", comment["id"]).eq("is_removed", False).execute()
-                comment_data["replies"] = replies_result.data or []
-
-            comments.append(comment_data)
-
-        return {"comments": comments}
+        if existing:
+            # Unlike
+            await db.comment_likes.delete_one({"id": existing["id"]})
+            await db.comments.update_one(
+                {"id": comment_id},
+                {"$inc": {"likes_count": -1}}
+            )
+            return {"message": "Unliked", "liked": False}
+        else:
+            # Like
+            await db.comment_likes.insert_one({
+                "id": str(uuid.uuid4()),
+                "comment_id": comment_id,
+                "user_id": current_user["id"],
+                "created_at": datetime.now(timezone.utc).isoformat()
+            })
+            await db.comments.update_one(
+                {"id": comment_id},
+                {"$inc": {"likes_count": 1}}
+            )
+            return {"message": "Liked", "liked": True}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 @router.delete("/comments/{comment_id}")
-async def delete_comment(comment_id: str, current_user: dict = Depends(get_current_user)):
+async def delete_comment(
+    comment_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Delete a comment (soft delete)"""
     try:
-        comment_result = supabase.table("comments").select("*").eq("id", comment_id).eq("user_id", current_user["id"]).execute()
+        comment = await db.comments.find_one({"id": comment_id})
+        
+        if not comment:
+            raise HTTPException(status_code=404, detail="Comment not found")
 
-        if not comment_result.data:
-            raise HTTPException(status_code=404, detail="Comment not found or you don't have permission")
+        if comment["author_id"] != current_user["id"]:
+            raise HTTPException(status_code=403, detail="Not your comment")
 
-        supabase.table("comments").update({"is_removed": True}).eq("id", comment_id).execute()
+        await db.comments.update_one(
+            {"id": comment_id},
+            {"$set": {
+                "is_deleted": True,
+                "content": "[deleted]",
+                "deleted_at": datetime.now(timezone.utc).isoformat()
+            }}
+        )
 
         return {"message": "Comment deleted"}
     except HTTPException:
@@ -197,116 +361,195 @@ async def delete_comment(comment_id: str, current_user: dict = Depends(get_curre
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-@router.get("/feed")
-async def get_activity_feed(
-    limit: int = 20,
+# ===================== REACTIONS =====================
+
+@router.post("/reactions/{content_type}/{content_id}")
+async def add_reaction(
+    content_type: str,
+    content_id: str,
+    reaction: ReactionCreate,
     current_user: dict = Depends(get_current_user)
 ):
+    """Add a reaction to content"""
     try:
-        following_result = supabase.table("follows").select("following_id").eq("follower_id", current_user["id"]).execute()
+        valid_reactions = ["like", "love", "celebrate", "insightful", "curious"]
+        if reaction.reaction_type not in valid_reactions:
+            raise HTTPException(status_code=400, detail=f"Invalid reaction. Use: {valid_reactions}")
 
-        following_ids = [f["following_id"] for f in following_result.data] if following_result.data else []
-        following_ids.append(current_user["id"])
+        # Check for existing reaction
+        existing = await db.reactions.find_one({
+            "content_type": content_type,
+            "content_id": content_id,
+            "user_id": current_user["id"]
+        })
 
-        activities = []
+        now = datetime.now(timezone.utc).isoformat()
 
-        courses_result = supabase.table("courses").select("*, users(username, avatar)").in_("creator_id", following_ids).order("created_at", desc=True).limit(limit).execute()
-        for course in courses_result.data if courses_result.data else []:
-            activities.append({
-                "type": "course_created",
-                "data": course,
-                "created_at": course["created_at"]
+        if existing:
+            if existing["reaction_type"] == reaction.reaction_type:
+                # Remove reaction
+                await db.reactions.delete_one({"id": existing["id"]})
+                return {"message": "Reaction removed", "action": "removed"}
+            else:
+                # Change reaction
+                await db.reactions.update_one(
+                    {"id": existing["id"]},
+                    {"$set": {"reaction_type": reaction.reaction_type, "updated_at": now}}
+                )
+                return {"message": "Reaction changed", "action": "changed", "type": reaction.reaction_type}
+        else:
+            # Add new reaction
+            await db.reactions.insert_one({
+                "id": str(uuid.uuid4()),
+                "content_type": content_type,
+                "content_id": content_id,
+                "user_id": current_user["id"],
+                "reaction_type": reaction.reaction_type,
+                "created_at": now
             })
-
-        projects_result = supabase.table("projects").select("*, users(username, avatar)").in_("creator_id", following_ids).order("created_at", desc=True).limit(limit).execute()
-        for project in projects_result.data if projects_result.data else []:
-            activities.append({
-                "type": "project_created",
-                "data": project,
-                "created_at": project["created_at"]
-            })
-
-        activities.sort(key=lambda x: x["created_at"], reverse=True)
-
-        return {"feed": activities[:limit]}
+            return {"message": "Reaction added", "action": "added", "type": reaction.reaction_type}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-@router.post("/posts")
-async def create_post(post: PostCreate, current_user: dict = Depends(get_current_user)):
+@router.get("/reactions/{content_type}/{content_id}")
+async def get_reactions(
+    content_type: str,
+    content_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get reactions for content"""
     try:
-        data = {
-            "user_id": current_user["id"],
-            "content": post.content,
-            "media_urls": post.media_urls,
-            "likes": 0,
-            "comments_count": 0
-        }
+        # Aggregate reactions by type
+        pipeline = [
+            {"$match": {"content_type": content_type, "content_id": content_id}},
+            {"$group": {"_id": "$reaction_type", "count": {"$sum": 1}}}
+        ]
+        result = await db.reactions.aggregate(pipeline).to_list(10)
+        
+        reactions = {item["_id"]: item["count"] for item in result}
+        total = sum(reactions.values())
 
-        result = supabase.table("posts").insert(data).execute()
+        # Check user's reaction
+        user_reaction = await db.reactions.find_one({
+            "content_type": content_type,
+            "content_id": content_id,
+            "user_id": current_user["id"]
+        })
 
         return {
-            "message": "Post created",
-            "post": result.data[0]
+            "reactions": reactions,
+            "total": total,
+            "my_reaction": user_reaction["reaction_type"] if user_reaction else None
         }
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-@router.get("/posts")
-async def get_posts(
-    user_id: Optional[str] = None,
+# ===================== ACTIVITY FEED =====================
+
+@router.get("/feed")
+async def get_activity_feed(
+    skip: int = 0,
     limit: int = 20,
     current_user: dict = Depends(get_current_user)
 ):
+    """Get personalized activity feed"""
     try:
-        query = supabase.table("posts").select("*, users(username, avatar)")
+        user_id = current_user["id"]
 
-        if user_id:
-            query = query.eq("user_id", user_id)
+        # Get users being followed
+        follows = await db.follows.find(
+            {"follower_id": user_id},
+            {"following_id": 1}
+        ).to_list(100)
+        following_ids = [f["following_id"] for f in follows]
+        following_ids.append(user_id)  # Include own activity
 
-        result = query.order("created_at", desc=True).limit(limit).execute()
+        # Get recent activities from followed users
+        activities = await db.activities.find(
+            {"user_id": {"$in": following_ids}},
+            {"_id": 0}
+        ).sort("created_at", -1).skip(skip).limit(limit).to_list(limit)
 
-        return {"posts": result.data}
+        # Enrich with user info
+        for activity in activities:
+            user = await db.users.find_one(
+                {"id": activity["user_id"]},
+                {"_id": 0, "username": 1, "avatar_url": 1}
+            )
+            if user:
+                activity["username"] = user.get("username")
+                activity["avatar_url"] = user.get("avatar_url")
+
+        return {"feed": activities}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-@router.get("/notifications")
-async def get_notifications(current_user: dict = Depends(get_current_user)):
+@router.get("/feed/global")
+async def get_global_feed(
+    skip: int = 0,
+    limit: int = 20
+):
+    """Get global activity feed (public)"""
     try:
-        notifications = []
+        activities = await db.activities.find(
+            {"is_public": True},
+            {"_id": 0}
+        ).sort("created_at", -1).skip(skip).limit(limit).to_list(limit)
 
-        new_followers = supabase.table("follows").select("follower_id, created_at, users(username, avatar)").eq("following_id", current_user["id"]).order("created_at", desc=True).limit(10).execute()
+        for activity in activities:
+            user = await db.users.find_one(
+                {"id": activity["user_id"]},
+                {"_id": 0, "username": 1, "avatar_url": 1}
+            )
+            if user:
+                activity["username"] = user.get("username")
+                activity["avatar_url"] = user.get("avatar_url")
 
-        for follow in new_followers.data if new_followers.data else []:
-            if follow.get("users"):
-                notifications.append({
-                    "type": "new_follower",
-                    "user": follow["users"],
-                    "created_at": follow["created_at"]
-                })
-
-        new_comments = supabase.table("comments").select("id, content, created_at, users(username, avatar)").or_(f"content_type.eq.course,content_type.eq.project").order("created_at", desc=True).limit(10).execute()
-
-        for comment in new_comments.data if new_comments.data else []:
-            if comment.get("users"):
-                notifications.append({
-                    "type": "new_comment",
-                    "comment": comment["content"],
-                    "user": comment["users"],
-                    "created_at": comment["created_at"]
-                })
-
-        notifications.sort(key=lambda x: x["created_at"], reverse=True)
-
-        return {"notifications": notifications[:20]}
+        return {"feed": activities}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-@router.get("/trending-posts")
-async def get_trending_posts():
-    try:
-        result = supabase.table("posts").select("*, users(username, avatar)").order("likes", desc=True).limit(10).execute()
+# ===================== STATS =====================
 
-        return {"trending_posts": result.data}
+@router.get("/stats/{user_id}")
+async def get_social_stats(user_id: str):
+    """Get social statistics for a user"""
+    try:
+        user = await db.users.find_one(
+            {"id": user_id},
+            {"_id": 0, "followers_count": 1, "following_count": 1}
+        )
+
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        comments_count = await db.comments.count_documents({"author_id": user_id})
+        reactions_received = await db.reactions.count_documents({"content_id": user_id})
+
+        return {
+            "stats": {
+                "followers": user.get("followers_count", 0),
+                "following": user.get("following_count", 0),
+                "comments": comments_count,
+                "reactions_received": reactions_received
+            }
+        }
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+@router.get("/reaction-types")
+async def get_reaction_types():
+    """Get available reaction types"""
+    return {
+        "reactions": [
+            {"type": "like", "emoji": "👍", "name": "Like"},
+            {"type": "love", "emoji": "❤️", "name": "Love"},
+            {"type": "celebrate", "emoji": "🎉", "name": "Celebrate"},
+            {"type": "insightful", "emoji": "💡", "name": "Insightful"},
+            {"type": "curious", "emoji": "🤔", "name": "Curious"}
+        ]
+    }

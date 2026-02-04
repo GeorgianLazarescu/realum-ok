@@ -1,288 +1,444 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from typing import Optional, List, Dict
-from datetime import datetime
-from core.auth import get_current_user
-from core.database import db
-from services.token_service import TokenService
+from datetime import datetime, timezone, timedelta
+import uuid
 
-router = APIRouter(prefix="/api/achievements", tags=["Achievements"])
+from core.database import db
+from core.auth import get_current_user, require_admin
+from services.token_service import TokenService
+from services.notification_service import send_notification
+
+router = APIRouter(prefix="/achievements", tags=["Achievements"])
 token_service = TokenService()
 
-class AchievementProgress(BaseModel):
-    achievement_id: str
-    progress: int
+class AchievementCreate(BaseModel):
+    key: str
+    name: str
+    description: str
+    category: str
+    tier: str = "bronze"  # bronze, silver, gold, platinum, diamond
+    xp_reward: int = 100
+    token_reward: float = 0
+    requirements: Dict = {}
+    icon: Optional[str] = None
+    is_hidden: bool = False
 
-@router.get("/catalog")
-async def get_achievement_catalog():
+class QuestCreate(BaseModel):
+    name: str
+    description: str
+    tasks: List[Dict]  # [{"type": "complete_course", "target": 1}, ...]
+    xp_reward: int = 500
+    token_reward: float = 50
+    duration_days: int = 7
+    is_repeatable: bool = False
+
+# ===================== ACHIEVEMENT DEFINITIONS =====================
+
+ACHIEVEMENTS = {
+    # Learning achievements
+    "first_course": {"name": "First Steps", "description": "Complete your first course", "tier": "bronze", "xp": 100, "category": "learning"},
+    "course_master": {"name": "Course Master", "description": "Complete 10 courses", "tier": "gold", "xp": 500, "category": "learning"},
+    "knowledge_seeker": {"name": "Knowledge Seeker", "description": "Complete 50 courses", "tier": "platinum", "xp": 2000, "category": "learning"},
+    
+    # Social achievements
+    "socialite": {"name": "Socialite", "description": "Get 10 followers", "tier": "bronze", "xp": 100, "category": "social"},
+    "influencer": {"name": "Influencer", "description": "Get 100 followers", "tier": "gold", "xp": 500, "category": "social"},
+    "community_star": {"name": "Community Star", "description": "Get 1000 followers", "tier": "diamond", "xp": 5000, "category": "social"},
+    
+    # Governance achievements
+    "first_vote": {"name": "Civic Duty", "description": "Cast your first vote", "tier": "bronze", "xp": 50, "category": "governance"},
+    "proposal_creator": {"name": "Proposal Creator", "description": "Create your first proposal", "tier": "silver", "xp": 200, "category": "governance"},
+    "governance_expert": {"name": "Governance Expert", "description": "Vote on 50 proposals", "tier": "gold", "xp": 500, "category": "governance"},
+    
+    # Economic achievements
+    "token_holder": {"name": "Token Holder", "description": "Hold 1000 RLM", "tier": "bronze", "xp": 100, "category": "economic"},
+    "whale": {"name": "Whale", "description": "Hold 100000 RLM", "tier": "platinum", "xp": 2000, "category": "economic"},
+    "staking_beginner": {"name": "Staking Beginner", "description": "Stake tokens for first time", "tier": "bronze", "xp": 100, "category": "economic"},
+    
+    # Contribution achievements
+    "bounty_hunter": {"name": "Bounty Hunter", "description": "Complete your first bounty", "tier": "bronze", "xp": 150, "category": "contribution"},
+    "bounty_master": {"name": "Bounty Master", "description": "Complete 10 bounties", "tier": "gold", "xp": 750, "category": "contribution"},
+    "project_creator": {"name": "Project Creator", "description": "Create a project", "tier": "silver", "xp": 200, "category": "contribution"},
+    
+    # Streak achievements
+    "week_streak": {"name": "Week Warrior", "description": "7-day login streak", "tier": "bronze", "xp": 100, "category": "engagement"},
+    "month_streak": {"name": "Month Master", "description": "30-day login streak", "tier": "silver", "xp": 500, "category": "engagement"},
+    "century_streak": {"name": "Century Club", "description": "100-day login streak", "tier": "gold", "xp": 2000, "category": "engagement"},
+    
+    # Special achievements
+    "early_adopter": {"name": "Early Adopter", "description": "Joined in the first month", "tier": "gold", "xp": 500, "category": "special", "hidden": True},
+    "bug_hunter": {"name": "Bug Hunter", "description": "Report a verified bug", "tier": "silver", "xp": 300, "category": "special"},
+}
+
+# ===================== ACHIEVEMENTS =====================
+
+@router.get("/")
+async def get_all_achievements():
+    """Get all achievement definitions"""
     try:
-        achievements = {
-            "education": [
-                {"id": "first_course", "name": "First Course", "description": "Complete your first course", "requirement": 1, "reward": 50, "type": "course_completion"},
-                {"id": "course_completionist", "name": "Course Completionist", "description": "Complete 5 courses", "requirement": 5, "reward": 250, "type": "course_completion"},
-                {"id": "knowledge_seeker", "name": "Knowledge Seeker", "description": "Complete 10 courses", "requirement": 10, "reward": 500, "type": "course_completion"},
-                {"id": "master_learner", "name": "Master Learner", "description": "Complete 25 courses", "requirement": 25, "reward": 1500, "type": "course_completion"},
-            ],
-            "creation": [
-                {"id": "content_creator", "name": "Content Creator", "description": "Create your first course", "requirement": 1, "reward": 100, "type": "course_creation"},
-                {"id": "educator", "name": "Educator", "description": "Create 5 courses", "requirement": 5, "reward": 500, "type": "course_creation"},
-                {"id": "master_teacher", "name": "Master Teacher", "description": "Create 10 courses", "requirement": 10, "reward": 1000, "type": "course_creation"},
-            ],
-            "collaboration": [
-                {"id": "team_player", "name": "Team Player", "description": "Join your first project", "requirement": 1, "reward": 75, "type": "project_join"},
-                {"id": "collaborator", "name": "Collaborator", "description": "Join 5 projects", "requirement": 5, "reward": 375, "type": "project_join"},
-                {"id": "project_leader", "name": "Project Leader", "description": "Create 3 projects", "requirement": 3, "reward": 300, "type": "project_creation"},
-            ],
-            "governance": [
-                {"id": "voter", "name": "Voter", "description": "Cast your first vote", "requirement": 1, "reward": 25, "type": "voting"},
-                {"id": "active_citizen", "name": "Active Citizen", "description": "Cast 10 votes", "requirement": 10, "reward": 200, "type": "voting"},
-                {"id": "governance_expert", "name": "Governance Expert", "description": "Cast 50 votes", "requirement": 50, "reward": 1000, "type": "voting"},
-                {"id": "proposer", "name": "Proposer", "description": "Create your first proposal", "requirement": 1, "reward": 100, "type": "proposal_creation"},
-            ],
-            "economy": [
-                {"id": "token_holder", "name": "Token Holder", "description": "Hold 1,000 RLM", "requirement": 1000, "reward": 100, "type": "token_balance"},
-                {"id": "investor", "name": "Investor", "description": "Hold 10,000 RLM", "requirement": 10000, "reward": 1000, "type": "token_balance"},
-                {"id": "whale", "name": "Whale", "description": "Hold 100,000 RLM", "requirement": 100000, "reward": 10000, "type": "token_balance"},
-            ],
-            "social": [
-                {"id": "networker", "name": "Networker", "description": "Have 10 followers", "requirement": 10, "reward": 50, "type": "followers"},
-                {"id": "influencer", "name": "Influencer", "description": "Have 100 followers", "requirement": 100, "reward": 500, "type": "followers"},
-                {"id": "community_leader", "name": "Community Leader", "description": "Have 1000 followers", "requirement": 1000, "reward": 5000, "type": "followers"},
-            ],
-            "milestones": [
-                {"id": "daily_streak_7", "name": "Week Warrior", "description": "Login for 7 consecutive days", "requirement": 7, "reward": 100, "type": "daily_streak"},
-                {"id": "daily_streak_30", "name": "Monthly Master", "description": "Login for 30 consecutive days", "requirement": 30, "reward": 500, "type": "daily_streak"},
-                {"id": "daily_streak_100", "name": "Centennial Champion", "description": "Login for 100 consecutive days", "requirement": 100, "reward": 2000, "type": "daily_streak"},
-            ]
-        }
+        # Get custom achievements from DB
+        custom = await db.achievement_definitions.find(
+            {"is_active": True},
+            {"_id": 0}
+        ).to_list(100)
 
-        return {"catalog": achievements}
+        # Combine with predefined
+        all_achievements = []
+        for key, data in ACHIEVEMENTS.items():
+            if not data.get("hidden", False):
+                all_achievements.append({
+                    "key": key,
+                    "name": data["name"],
+                    "description": data["description"],
+                    "tier": data["tier"],
+                    "xp_reward": data["xp"],
+                    "category": data["category"]
+                })
+
+        all_achievements.extend(custom)
+
+        # Group by category
+        by_category = {}
+        for ach in all_achievements:
+            cat = ach.get("category", "general")
+            if cat not in by_category:
+                by_category[cat] = []
+            by_category[cat].append(ach)
+
+        return {
+            "achievements": all_achievements,
+            "by_category": by_category,
+            "total": len(all_achievements)
+        }
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-@router.get("/my-achievements")
+@router.get("/my")
 async def get_my_achievements(current_user: dict = Depends(get_current_user)):
+    """Get current user's achievements"""
     try:
-        result = supabase.table("user_achievements").select("*").eq("user_id", current_user["id"]).execute()
+        user_id = current_user["id"]
 
-        return {"achievements": result.data}
+        # Get earned achievements
+        earned = await db.user_achievements.find(
+            {"user_id": user_id},
+            {"_id": 0}
+        ).to_list(100)
+
+        earned_keys = [a["achievement_key"] for a in earned]
+
+        # Get all achievements
+        all_achievements = []
+        for key, data in ACHIEVEMENTS.items():
+            all_achievements.append({
+                "key": key,
+                "name": data["name"],
+                "description": data["description"],
+                "tier": data["tier"],
+                "xp_reward": data["xp"],
+                "category": data["category"],
+                "earned": key in earned_keys,
+                "earned_at": next((a["earned_at"] for a in earned if a["achievement_key"] == key), None)
+            })
+
+        # Stats
+        total_earned = len(earned)
+        total_xp = sum(ACHIEVEMENTS.get(a["achievement_key"], {}).get("xp", 0) for a in earned)
+
+        return {
+            "achievements": all_achievements,
+            "earned_count": total_earned,
+            "total_count": len(ACHIEVEMENTS),
+            "total_xp_from_achievements": total_xp,
+            "completion_percentage": round(total_earned / len(ACHIEVEMENTS) * 100, 1)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@router.post("/check")
+async def check_achievements(current_user: dict = Depends(get_current_user)):
+    """Check and award any earned achievements"""
+    try:
+        user_id = current_user["id"]
+        user = await db.users.find_one({"id": user_id})
+        newly_earned = []
+
+        # Get already earned
+        earned = await db.user_achievements.find(
+            {"user_id": user_id},
+            {"achievement_key": 1}
+        ).to_list(100)
+        earned_keys = [a["achievement_key"] for a in earned]
+
+        now = datetime.now(timezone.utc).isoformat()
+
+        # Check each achievement
+        checks = {
+            # Course achievements
+            "first_course": await db.user_courses.count_documents({"user_id": user_id, "completed": True}) >= 1,
+            "course_master": await db.user_courses.count_documents({"user_id": user_id, "completed": True}) >= 10,
+            "knowledge_seeker": await db.user_courses.count_documents({"user_id": user_id, "completed": True}) >= 50,
+            
+            # Social achievements
+            "socialite": user.get("followers_count", 0) >= 10,
+            "influencer": user.get("followers_count", 0) >= 100,
+            "community_star": user.get("followers_count", 0) >= 1000,
+            
+            # Governance achievements
+            "first_vote": await db.votes.count_documents({"user_id": user_id}) >= 1,
+            "proposal_creator": await db.proposals.count_documents({"proposer_id": user_id}) >= 1,
+            "governance_expert": await db.votes.count_documents({"user_id": user_id}) >= 50,
+            
+            # Economic achievements
+            "token_holder": user.get("realum_balance", 0) >= 1000,
+            "whale": user.get("realum_balance", 0) >= 100000,
+            "staking_beginner": await db.stakes.count_documents({"user_id": user_id}) >= 1,
+            
+            # Contribution achievements
+            "bounty_hunter": await db.bounties.count_documents({"claimed_by": user_id, "status": "completed"}) >= 1,
+            "bounty_master": await db.bounties.count_documents({"claimed_by": user_id, "status": "completed"}) >= 10,
+            "project_creator": await db.projects.count_documents({"creator_id": user_id}) >= 1,
+        }
+
+        # Check streak achievements
+        daily_reward = await db.daily_rewards.find_one({"user_id": user_id})
+        if daily_reward:
+            streak = daily_reward.get("streak", 0)
+            checks["week_streak"] = streak >= 7
+            checks["month_streak"] = streak >= 30
+            checks["century_streak"] = streak >= 100
+
+        # Award new achievements
+        for key, earned_check in checks.items():
+            if earned_check and key not in earned_keys:
+                ach_data = ACHIEVEMENTS.get(key, {})
+
+                await db.user_achievements.insert_one({
+                    "id": str(uuid.uuid4()),
+                    "user_id": user_id,
+                    "achievement_key": key,
+                    "earned_at": now
+                })
+
+                # Award XP
+                xp_reward = ach_data.get("xp", 0)
+                if xp_reward > 0:
+                    await db.users.update_one(
+                        {"id": user_id},
+                        {"$inc": {"xp": xp_reward}}
+                    )
+
+                newly_earned.append({
+                    "key": key,
+                    "name": ach_data.get("name"),
+                    "xp_reward": xp_reward
+                })
+
+                # Notify user
+                await send_notification(
+                    user_id=user_id,
+                    title="Achievement Unlocked!",
+                    message=f"You earned '{ach_data.get('name')}'! +{xp_reward} XP",
+                    notification_type="achievement",
+                    category="rewards"
+                )
+
+        return {
+            "newly_earned": newly_earned,
+            "count": len(newly_earned)
+        }
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 @router.get("/progress")
 async def get_achievement_progress(current_user: dict = Depends(get_current_user)):
+    """Get progress towards unearned achievements"""
     try:
-        user_result = supabase.table("users").select("*").eq("id", current_user["id"]).execute()
-        user = user_result.data[0] if user_result.data else {}
+        user_id = current_user["id"]
+        user = await db.users.find_one({"id": user_id})
 
-        courses_completed = supabase.table("user_courses").select("id").eq("user_id", current_user["id"]).eq("completed", True).execute()
-        courses_created = supabase.table("courses").select("id").eq("creator_id", current_user["id"]).execute()
-        projects_joined = supabase.table("project_members").select("id").eq("user_id", current_user["id"]).execute()
-        projects_created = supabase.table("projects").select("id").eq("creator_id", current_user["id"]).execute()
-        votes_cast = supabase.table("votes").select("id").eq("user_id", current_user["id"]).execute()
-        proposals_created = supabase.table("proposals").select("id").eq("proposer_id", current_user["id"]).execute()
-        followers = supabase.table("follows").select("id").eq("following_id", current_user["id"]).execute()
-        daily_rewards = supabase.table("daily_rewards").select("streak").eq("user_id", current_user["id"]).order("created_at", desc=True).limit(1).execute()
+        # Get already earned
+        earned = await db.user_achievements.find(
+            {"user_id": user_id},
+            {"achievement_key": 1}
+        ).to_list(100)
+        earned_keys = [a["achievement_key"] for a in earned]
 
-        token_balance = float(user.get("realum_balance", 0))
-        max_streak = daily_rewards.data[0].get("streak", 0) if daily_rewards.data else 0
+        # Calculate progress for each achievement
+        progress = []
 
-        progress = {
-            "course_completion": len(courses_completed.data or []),
-            "course_creation": len(courses_created.data or []),
-            "project_join": len(projects_joined.data or []),
-            "project_creation": len(projects_created.data or []),
-            "voting": len(votes_cast.data or []),
-            "proposal_creation": len(proposals_created.data or []),
-            "token_balance": token_balance,
-            "followers": len(followers.data or []),
-            "daily_streak": max_streak
-        }
+        # Course progress
+        courses_completed = await db.user_courses.count_documents({"user_id": user_id, "completed": True})
+        if "first_course" not in earned_keys:
+            progress.append({"key": "first_course", "name": "First Steps", "current": courses_completed, "target": 1, "percentage": min(100, courses_completed * 100)})
+        if "course_master" not in earned_keys:
+            progress.append({"key": "course_master", "name": "Course Master", "current": courses_completed, "target": 10, "percentage": min(100, courses_completed * 10)})
 
-        return {"progress": progress}
+        # Social progress
+        followers = user.get("followers_count", 0)
+        if "socialite" not in earned_keys:
+            progress.append({"key": "socialite", "name": "Socialite", "current": followers, "target": 10, "percentage": min(100, followers * 10)})
+        if "influencer" not in earned_keys:
+            progress.append({"key": "influencer", "name": "Influencer", "current": followers, "target": 100, "percentage": min(100, followers)})
+
+        # Governance progress
+        votes = await db.votes.count_documents({"user_id": user_id})
+        if "first_vote" not in earned_keys:
+            progress.append({"key": "first_vote", "name": "Civic Duty", "current": votes, "target": 1, "percentage": min(100, votes * 100)})
+        if "governance_expert" not in earned_keys:
+            progress.append({"key": "governance_expert", "name": "Governance Expert", "current": votes, "target": 50, "percentage": min(100, votes * 2)})
+
+        # Bounty progress
+        bounties = await db.bounties.count_documents({"claimed_by": user_id, "status": "completed"})
+        if "bounty_hunter" not in earned_keys:
+            progress.append({"key": "bounty_hunter", "name": "Bounty Hunter", "current": bounties, "target": 1, "percentage": min(100, bounties * 100)})
+        if "bounty_master" not in earned_keys:
+            progress.append({"key": "bounty_master", "name": "Bounty Master", "current": bounties, "target": 10, "percentage": min(100, bounties * 10)})
+
+        # Sort by percentage (closest to completion first)
+        progress.sort(key=lambda x: x["percentage"], reverse=True)
+
+        return {"progress": progress[:10]}  # Return top 10 closest
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-@router.post("/check-and-award")
-async def check_and_award_achievements(current_user: dict = Depends(get_current_user)):
+# ===================== QUESTS =====================
+
+@router.get("/quests")
+async def get_active_quests(current_user: dict = Depends(get_current_user)):
+    """Get active quests"""
     try:
-        progress_data = await get_achievement_progress(current_user)
-        progress = progress_data["progress"]
+        now = datetime.now(timezone.utc).isoformat()
 
-        catalog_data = await get_achievement_catalog()
-        all_achievements = catalog_data["catalog"]
+        # Get global quests
+        quests = await db.quests.find(
+            {"is_active": True, "ends_at": {"$gt": now}},
+            {"_id": 0}
+        ).to_list(20)
 
-        existing_achievements = supabase.table("user_achievements").select("achievement_name").eq("user_id", current_user["id"]).execute()
-        earned_names = [a["achievement_name"] for a in existing_achievements.data] if existing_achievements.data else []
+        # Get user's quest progress
+        user_quests = await db.user_quests.find(
+            {"user_id": current_user["id"]},
+            {"_id": 0}
+        ).to_list(20)
 
-        newly_earned = []
+        quest_progress = {q["quest_id"]: q for q in user_quests}
 
-        for category, achievements in all_achievements.items():
-            for achievement in achievements:
-                if achievement["name"] in earned_names:
-                    continue
+        for quest in quests:
+            progress = quest_progress.get(quest["id"], {})
+            quest["user_progress"] = progress.get("progress", {})
+            quest["completed"] = progress.get("completed", False)
 
-                achievement_type = achievement["type"]
-                requirement = achievement["requirement"]
-                current_progress = progress.get(achievement_type, 0)
+        return {"quests": quests}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
-                if current_progress >= requirement:
-                    achievement_data = {
-                        "user_id": current_user["id"],
-                        "achievement_type": category,
-                        "achievement_name": achievement["name"],
-                        "metadata": {
-                            "description": achievement["description"],
-                            "requirement": requirement,
-                            "reward": achievement["reward"]
-                        }
-                    }
+@router.post("/quests/{quest_id}/claim")
+async def claim_quest_reward(
+    quest_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Claim completed quest reward"""
+    try:
+        user_id = current_user["id"]
 
-                    result = supabase.table("user_achievements").insert(achievement_data).execute()
+        # Check quest completion
+        user_quest = await db.user_quests.find_one({
+            "user_id": user_id,
+            "quest_id": quest_id,
+            "completed": True,
+            "claimed": False
+        })
 
-                    user_result = supabase.table("users").select("realum_balance").eq("id", current_user["id"]).execute()
-                    current_balance = float(user_result.data[0].get("realum_balance", 0))
-                    new_balance = current_balance + achievement["reward"]
+        if not user_quest:
+            raise HTTPException(status_code=400, detail="Quest not completed or already claimed")
 
-                    supabase.table("users").update({"realum_balance": new_balance}).eq("id", current_user["id"]).execute()
+        quest = await db.quests.find_one({"id": quest_id})
+        if not quest:
+            raise HTTPException(status_code=404, detail="Quest not found")
 
-                    token_service.create_transaction(
-                        user_id=current_user["id"],
-                        amount=achievement["reward"],
-                        transaction_type="achievement_reward",
-                        description=f"Achievement unlocked: {achievement['name']}"
-                    )
+        # Award rewards
+        xp_reward = quest.get("xp_reward", 0)
+        token_reward = quest.get("token_reward", 0)
 
-                    newly_earned.append({
-                        "achievement": achievement,
-                        "reward": achievement["reward"]
-                    })
+        await db.users.update_one(
+            {"id": user_id},
+            {"$inc": {"xp": xp_reward, "realum_balance": token_reward}}
+        )
+
+        await db.user_quests.update_one(
+            {"user_id": user_id, "quest_id": quest_id},
+            {"$set": {"claimed": True, "claimed_at": datetime.now(timezone.utc).isoformat()}}
+        )
+
+        if token_reward > 0:
+            await token_service.create_transaction(
+                user_id=user_id,
+                tx_type="credit",
+                amount=token_reward,
+                description=f"Quest reward: {quest['name']}"
+            )
 
         return {
-            "message": f"Awarded {len(newly_earned)} new achievements",
-            "newly_earned": newly_earned
+            "message": "Quest reward claimed",
+            "xp_reward": xp_reward,
+            "token_reward": token_reward
         }
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-@router.get("/leaderboard/{category}")
-async def get_achievement_leaderboard(category: str):
-    try:
-        achievements_result = supabase.table("user_achievements").select("user_id, achievement_type").eq("achievement_type", category).execute()
+# ===================== LEADERBOARD =====================
 
-        user_counts = {}
-        for achievement in achievements_result.data if achievements_result.data else []:
-            user_id = achievement["user_id"]
-            user_counts[user_id] = user_counts.get(user_id, 0) + 1
+@router.get("/leaderboard")
+async def get_achievement_leaderboard(limit: int = 20):
+    """Get achievement leaderboard"""
+    try:
+        pipeline = [
+            {"$group": {
+                "_id": "$user_id",
+                "achievement_count": {"$sum": 1}
+            }},
+            {"$sort": {"achievement_count": -1}},
+            {"$limit": limit}
+        ]
+
+        results = await db.user_achievements.aggregate(pipeline).to_list(limit)
 
         leaderboard = []
-        for user_id, count in sorted(user_counts.items(), key=lambda x: x[1], reverse=True)[:100]:
-            user_result = supabase.table("users").select("username, avatar").eq("id", user_id).execute()
-            if user_result.data:
+        for idx, item in enumerate(results):
+            user = await db.users.find_one(
+                {"id": item["_id"]},
+                {"_id": 0, "username": 1, "avatar_url": 1, "level": 1}
+            )
+            if user:
                 leaderboard.append({
-                    "user_id": user_id,
-                    "username": user_result.data[0].get("username"),
-                    "avatar": user_result.data[0].get("avatar"),
-                    "achievement_count": count
+                    "rank": idx + 1,
+                    "user_id": item["_id"],
+                    "username": user.get("username"),
+                    "avatar_url": user.get("avatar_url"),
+                    "level": user.get("level", 1),
+                    "achievements": item["achievement_count"]
                 })
 
-        return {"leaderboard": leaderboard, "category": category}
+        return {"leaderboard": leaderboard}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-@router.get("/tree")
-async def get_achievement_tree():
-    try:
-        tree = {
-            "education_path": {
-                "nodes": [
-                    {"id": "first_course", "requires": [], "unlocks": ["course_completionist"]},
-                    {"id": "course_completionist", "requires": ["first_course"], "unlocks": ["knowledge_seeker"]},
-                    {"id": "knowledge_seeker", "requires": ["course_completionist"], "unlocks": ["master_learner"]},
-                    {"id": "master_learner", "requires": ["knowledge_seeker"], "unlocks": []}
-                ]
-            },
-            "creation_path": {
-                "nodes": [
-                    {"id": "content_creator", "requires": [], "unlocks": ["educator"]},
-                    {"id": "educator", "requires": ["content_creator"], "unlocks": ["master_teacher"]},
-                    {"id": "master_teacher", "requires": ["educator"], "unlocks": []}
-                ]
-            },
-            "governance_path": {
-                "nodes": [
-                    {"id": "voter", "requires": [], "unlocks": ["active_citizen"]},
-                    {"id": "active_citizen", "requires": ["voter"], "unlocks": ["governance_expert"]},
-                    {"id": "governance_expert", "requires": ["active_citizen"], "unlocks": []}
-                ]
-            }
-        }
-
-        return {"achievement_tree": tree}
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-@router.get("/stats")
-async def get_achievement_stats():
-    try:
-        all_achievements = supabase.table("user_achievements").select("*").execute()
-
-        total_achievements = len(all_achievements.data) if all_achievements.data else 0
-
-        type_breakdown = {}
-        for achievement in all_achievements.data if all_achievements.data else []:
-            atype = achievement.get("achievement_type", "unknown")
-            type_breakdown[atype] = type_breakdown.get(atype, 0) + 1
-
-        most_earned = {}
-        for achievement in all_achievements.data if all_achievements.data else []:
-            name = achievement.get("achievement_name", "unknown")
-            most_earned[name] = most_earned.get(name, 0) + 1
-
-        top_achievements = sorted(most_earned.items(), key=lambda x: x[1], reverse=True)[:10]
-
-        return {
-            "stats": {
-                "total_achievements_earned": total_achievements,
-                "type_breakdown": type_breakdown,
-                "most_earned_achievements": [{"name": k, "count": v} for k, v in top_achievements]
-            }
-        }
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-@router.get("/next-achievements")
-async def get_next_achievements(current_user: dict = Depends(get_current_user)):
-    try:
-        progress_data = await get_achievement_progress(current_user)
-        progress = progress_data["progress"]
-
-        catalog_data = await get_achievement_catalog()
-        all_achievements = catalog_data["catalog"]
-
-        existing_achievements = supabase.table("user_achievements").select("achievement_name").eq("user_id", current_user["id"]).execute()
-        earned_names = [a["achievement_name"] for a in existing_achievements.data] if existing_achievements.data else []
-
-        next_achievements = []
-
-        for category, achievements in all_achievements.items():
-            for achievement in achievements:
-                if achievement["name"] not in earned_names:
-                    achievement_type = achievement["type"]
-                    requirement = achievement["requirement"]
-                    current_progress = progress.get(achievement_type, 0)
-
-                    completion_percentage = min(100, int((current_progress / requirement) * 100))
-
-                    next_achievements.append({
-                        "achievement": achievement,
-                        "progress": current_progress,
-                        "requirement": requirement,
-                        "completion_percentage": completion_percentage
-                    })
-
-        next_achievements.sort(key=lambda x: x["completion_percentage"], reverse=True)
-
-        return {"next_achievements": next_achievements[:10]}
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+@router.get("/tiers")
+async def get_achievement_tiers():
+    """Get achievement tier definitions"""
+    return {
+        "tiers": [
+            {"key": "bronze", "name": "Bronze", "color": "#CD7F32", "min_xp": 50},
+            {"key": "silver", "name": "Silver", "color": "#C0C0C0", "min_xp": 100},
+            {"key": "gold", "name": "Gold", "color": "#FFD700", "min_xp": 250},
+            {"key": "platinum", "name": "Platinum", "color": "#E5E4E2", "min_xp": 500},
+            {"key": "diamond", "name": "Diamond", "color": "#B9F2FF", "min_xp": 1000}
+        ],
+        "categories": [
+            "learning", "social", "governance", "economic", "contribution", "engagement", "special"
+        ]
+    }
