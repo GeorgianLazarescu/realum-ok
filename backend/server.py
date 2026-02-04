@@ -251,6 +251,7 @@ app.include_router(seo_router)
 app.include_router(recommendations_router)
 app.include_router(defi_router)
 app.include_router(video_router)
+app.include_router(nft_router)
 
 @app.get("/")
 async def root():
