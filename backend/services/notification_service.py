@@ -39,7 +39,7 @@ async def send_notification(
     now = datetime.now(timezone.utc)
 
     # Check user preferences
-    prefs = await db.notification_preferences.find_one({"user_id": user_id})
+    prefs = await db.notification_preferences.find_one({"user_id": user_id}, {"_id": 0})
 
     if not prefs:
         # Create default preferences
