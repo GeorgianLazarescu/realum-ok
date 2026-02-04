@@ -32,7 +32,8 @@ import {
   SearchPage,
   AchievementsPage,
   SocialPage,
-  NotificationsPage
+  NotificationsPage,
+  ChatPage
 } from './pages';
 
 // App Layout Component
