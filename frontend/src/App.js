@@ -188,6 +188,14 @@ function App() {
                 </ProtectedRoute>
               } />
               
+              <Route path="/chat" element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <ChatPage />
+                  </AppLayout>
+                </ProtectedRoute>
+              } />
+              
               {/* Catch all - redirect to dashboard */}
               <Route path="*" element={<Navigate to="/dashboard" replace />} />
             </Routes>
