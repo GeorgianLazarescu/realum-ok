@@ -323,6 +323,9 @@ async def send_message(
         }
 
         await db.chat_messages.insert_one(message_data)
+        
+        # Remove _id if MongoDB added it
+        message_data.pop("_id", None)
 
         # Update channel
         preview = message.content[:50] + "..." if len(message.content) > 50 else message.content
