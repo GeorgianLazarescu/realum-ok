@@ -151,12 +151,23 @@ async def login(credentials: UserLogin, request: Request):
     
     # Check if account is locked
     locked_until = user.get("locked_until")
-    if locked_until and locked_until > datetime.now(timezone.utc):
-        time_remaining = (locked_until - datetime.now(timezone.utc)).seconds // 60
-        raise HTTPException(
-            status_code=423, 
-            detail=f"Account locked due to too many failed attempts. Try again in {time_remaining} minutes."
-        )
+    if locked_until:
+        # Ensure both datetimes are timezone-aware for comparison
+        current_time = datetime.now(timezone.utc)
+        if isinstance(locked_until, str):
+            # Parse ISO string to datetime
+            from datetime import datetime as dt
+            locked_until = dt.fromisoformat(locked_until.replace('Z', '+00:00'))
+        elif locked_until.tzinfo is None:
+            # Make naive datetime timezone-aware
+            locked_until = locked_until.replace(tzinfo=timezone.utc)
+        
+        if locked_until > current_time:
+            time_remaining = (locked_until - current_time).seconds // 60
+            raise HTTPException(
+                status_code=423, 
+                detail=f"Account locked due to too many failed attempts. Try again in {time_remaining} minutes."
+            )
     
     # Verify password
     if not bcrypt.checkpw(credentials.password.encode(), user["password"].encode()):
