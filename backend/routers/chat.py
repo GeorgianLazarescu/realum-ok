@@ -1112,7 +1112,7 @@ async def websocket_endpoint(websocket: WebSocket, channel_id: str, token: str =
             "channel_id": channel_id,
             "timestamp": datetime.now(timezone.utc).isoformat()
         })
-    except Exception as e:
+    except Exception:
         manager.disconnect(websocket, channel_id, user_id)
 
 
