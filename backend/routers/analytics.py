@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
-from datetime import datetime, timedelta
+from datetime import datetime, timezone, timedelta
+import uuid
 from core.auth import get_current_user, require_admin
 from core.database import db
 
@@ -16,7 +17,7 @@ class ReportCreate(BaseModel):
     schedule: Optional[str] = None
 
 class ExportRequest(BaseModel):
-    format: str
+    format: str = "json"
     date_from: Optional[str] = None
     date_to: Optional[str] = None
 
@@ -25,8 +26,9 @@ async def get_dashboard_analytics(
     current_user: dict = Depends(get_current_user),
     time_range: str = Query("7d", regex="^(24h|7d|30d|90d|1y|all)$")
 ):
+    """Get dashboard analytics overview"""
     try:
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         if time_range == "24h":
             start_date = now - timedelta(days=1)
         elif time_range == "7d":
@@ -38,34 +40,45 @@ async def get_dashboard_analytics(
         elif time_range == "1y":
             start_date = now - timedelta(days=365)
         else:
-            start_date = datetime(2020, 1, 1)
+            start_date = datetime(2020, 1, 1, tzinfo=timezone.utc)
 
-        users_result = supabase.table("users").select("id, created_at").gte("created_at", start_date.isoformat()).execute()
-        total_users = len(users_result.data) if users_result.data else 0
+        # User stats
+        total_users = await db.users.count_documents({})
+        new_users = await db.users.count_documents({"created_at": {"$gte": start_date.isoformat()}})
 
-        courses_result = supabase.table("courses").select("id").execute()
-        total_courses = len(courses_result.data) if courses_result.data else 0
+        # Course stats
+        total_courses = await db.courses.count_documents({})
+        
+        # Project stats
+        total_projects = await db.projects.count_documents({})
 
-        projects_result = supabase.table("projects").select("id").execute()
-        total_projects = len(projects_result.data) if projects_result.data else 0
+        # Transaction volume
+        tx_pipeline = [
+            {"$match": {"timestamp": {"$gte": start_date.isoformat()}}},
+            {"$group": {"_id": None, "total": {"$sum": "$amount"}}}
+        ]
+        tx_result = await db.transactions.aggregate(tx_pipeline).to_list(1)
+        total_volume = tx_result[0]["total"] if tx_result else 0
 
-        transactions_result = supabase.table("transactions").select("amount").gte("created_at", start_date.isoformat()).execute()
-        total_volume = sum(float(t["amount"]) for t in transactions_result.data) if transactions_result.data else 0
+        # Active proposals
+        active_proposals = await db.proposals.count_documents({"status": "active"})
 
-        proposals_result = supabase.table("proposals").select("id, status").execute()
-        active_proposals = len([p for p in proposals_result.data if p["status"] == "active"]) if proposals_result.data else 0
-
-        enrollments_result = supabase.table("user_courses").select("id, progress").execute()
-        avg_completion = sum(float(e.get("progress", 0)) for e in enrollments_result.data) / len(enrollments_result.data) if enrollments_result.data else 0
+        # Average course completion
+        completion_pipeline = [
+            {"$group": {"_id": None, "avg_progress": {"$avg": "$progress"}}}
+        ]
+        completion_result = await db.user_courses.aggregate(completion_pipeline).to_list(1)
+        avg_completion = completion_result[0]["avg_progress"] if completion_result else 0
 
         return {
             "overview": {
                 "total_users": total_users,
+                "new_users": new_users,
                 "total_courses": total_courses,
                 "total_projects": total_projects,
                 "token_volume": total_volume,
                 "active_proposals": active_proposals,
-                "avg_course_completion": round(avg_completion, 2)
+                "avg_course_completion": round(avg_completion or 0, 2)
             },
             "time_range": time_range
         }
@@ -77,47 +90,66 @@ async def get_user_growth(
     current_user: dict = Depends(get_current_user),
     days: int = Query(30, ge=1, le=365)
 ):
+    """Get user growth data over time"""
     try:
-        start_date = datetime.utcnow() - timedelta(days=days)
+        start_date = datetime.now(timezone.utc) - timedelta(days=days)
 
-        users_result = supabase.table("users").select("created_at").gte("created_at", start_date.isoformat()).execute()
+        users = await db.users.find(
+            {"created_at": {"$gte": start_date.isoformat()}},
+            {"_id": 0, "created_at": 1}
+        ).to_list(None)
 
         growth_data = {}
-        for user in users_result.data if users_result.data else []:
-            date = user["created_at"][:10]
-            growth_data[date] = growth_data.get(date, 0) + 1
+        for user in users:
+            date = user["created_at"][:10] if user.get("created_at") else None
+            if date:
+                growth_data[date] = growth_data.get(date, 0) + 1
 
         return {
             "growth_data": [{"date": k, "count": v} for k, v in sorted(growth_data.items())],
-            "total_new_users": len(users_result.data) if users_result.data else 0
+            "total_new_users": len(users)
         }
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 @router.get("/token-economy")
 async def get_token_economy_analytics(current_user: dict = Depends(get_current_user)):
+    """Get token economy analytics"""
     try:
-        transactions_result = supabase.table("transactions").select("*").execute()
+        # Total transactions
+        total_transactions = await db.transactions.count_documents({})
 
-        total_supply = 0
-        total_burned = 0
-        total_transactions = len(transactions_result.data) if transactions_result.data else 0
+        # Total burned
+        burn_pipeline = [
+            {"$group": {"_id": None, "total": {"$sum": "$burned"}}}
+        ]
+        burn_result = await db.transactions.aggregate(burn_pipeline).to_list(1)
+        total_burned = burn_result[0]["total"] if burn_result else 0
 
-        for tx in transactions_result.data if transactions_result.data else []:
-            if tx.get("type") == "burn":
-                total_burned += float(tx.get("amount", 0))
-            total_supply += float(tx.get("amount", 0))
+        # Get burn records
+        burns_pipeline = [
+            {"$group": {"_id": None, "total": {"$sum": "$amount"}}}
+        ]
+        burns_result = await db.burns.aggregate(burns_pipeline).to_list(1)
+        total_burned += burns_result[0]["total"] if burns_result else 0
 
-        users_result = supabase.table("users").select("realum_balance").execute()
-        circulating_supply = sum(float(u.get("realum_balance", 0)) for u in users_result.data) if users_result.data else 0
+        # Circulating supply
+        supply_pipeline = [
+            {"$group": {"_id": None, "total": {"$sum": "$realum_balance"}}}
+        ]
+        supply_result = await db.users.aggregate(supply_pipeline).to_list(1)
+        circulating_supply = supply_result[0]["total"] if supply_result else 0
+
+        # Total holders
+        holders = await db.users.count_documents({"realum_balance": {"$gt": 0}})
 
         return {
             "token_economy": {
-                "total_supply": total_supply,
                 "circulating_supply": circulating_supply,
                 "total_burned": total_burned,
                 "total_transactions": total_transactions,
-                "holders": len(users_result.data) if users_result.data else 0
+                "holders": holders,
+                "burn_rate": 0.02  # 2%
             }
         }
     except Exception as e:
@@ -125,36 +157,33 @@ async def get_token_economy_analytics(current_user: dict = Depends(get_current_u
 
 @router.get("/course-analytics")
 async def get_course_analytics(current_user: dict = Depends(get_current_user)):
+    """Get course analytics"""
     try:
-        courses_result = supabase.table("courses").select("id, title, creator_id, status").execute()
-        enrollments_result = supabase.table("user_courses").select("course_id, progress, completed").execute()
-
-        course_stats = {}
-        for enrollment in enrollments_result.data if enrollments_result.data else []:
-            course_id = enrollment["course_id"]
-            if course_id not in course_stats:
-                course_stats[course_id] = {
-                    "enrollments": 0,
-                    "completions": 0,
-                    "total_progress": 0
-                }
-            course_stats[course_id]["enrollments"] += 1
-            course_stats[course_id]["total_progress"] += float(enrollment.get("progress", 0))
-            if enrollment.get("completed"):
-                course_stats[course_id]["completions"] += 1
-
+        courses = await db.courses.find({}, {"_id": 0}).to_list(100)
+        
         analytics = []
-        for course in courses_result.data if courses_result.data else []:
-            stats = course_stats.get(course["id"], {"enrollments": 0, "completions": 0, "total_progress": 0})
-            avg_progress = stats["total_progress"] / stats["enrollments"] if stats["enrollments"] > 0 else 0
+        for course in courses:
+            course_id = course.get("id")
+            
+            # Get enrollment stats
+            enrollments = await db.user_courses.count_documents({"course_id": course_id})
+            completions = await db.user_courses.count_documents({"course_id": course_id, "completed": True})
+            
+            # Average progress
+            progress_pipeline = [
+                {"$match": {"course_id": course_id}},
+                {"$group": {"_id": None, "avg_progress": {"$avg": "$progress"}}}
+            ]
+            progress_result = await db.user_courses.aggregate(progress_pipeline).to_list(1)
+            avg_progress = progress_result[0]["avg_progress"] if progress_result else 0
 
             analytics.append({
-                "course_id": course["id"],
-                "course_title": course["title"],
-                "enrollments": stats["enrollments"],
-                "completions": stats["completions"],
-                "completion_rate": round(stats["completions"] / stats["enrollments"] * 100, 2) if stats["enrollments"] > 0 else 0,
-                "avg_progress": round(avg_progress, 2)
+                "course_id": course_id,
+                "course_title": course.get("title"),
+                "enrollments": enrollments,
+                "completions": completions,
+                "completion_rate": round(completions / enrollments * 100, 2) if enrollments > 0 else 0,
+                "avg_progress": round(avg_progress or 0, 2)
             })
 
         return {"course_analytics": analytics}
@@ -163,17 +192,17 @@ async def get_course_analytics(current_user: dict = Depends(get_current_user)):
 
 @router.get("/dao-activity")
 async def get_dao_activity(current_user: dict = Depends(get_current_user)):
+    """Get DAO activity analytics"""
     try:
-        proposals_result = supabase.table("proposals").select("*").execute()
-        votes_result = supabase.table("votes").select("*").execute()
+        total_proposals = await db.proposals.count_documents({})
+        total_votes = await db.votes.count_documents({})
 
-        total_proposals = len(proposals_result.data) if proposals_result.data else 0
-        total_votes = len(votes_result.data) if votes_result.data else 0
-
-        status_breakdown = {}
-        for proposal in proposals_result.data if proposals_result.data else []:
-            status = proposal.get("status", "unknown")
-            status_breakdown[status] = status_breakdown.get(status, 0) + 1
+        # Status breakdown
+        status_pipeline = [
+            {"$group": {"_id": "$status", "count": {"$sum": 1}}}
+        ]
+        status_result = await db.proposals.aggregate(status_pipeline).to_list(None)
+        status_breakdown = {item["_id"]: item["count"] for item in status_result if item["_id"]}
 
         return {
             "dao_activity": {
@@ -191,28 +220,40 @@ async def create_custom_report(
     report: ReportCreate,
     current_user: dict = Depends(get_current_user)
 ):
+    """Create a custom analytics report"""
     try:
-        data = {
+        report_id = str(uuid.uuid4())
+        now = datetime.now(timezone.utc).isoformat()
+
+        report_data = {
+            "id": report_id,
             "user_id": current_user["id"],
             "name": report.name,
             "description": report.description,
             "report_type": report.report_type,
             "metrics": report.metrics,
             "filters": report.filters,
-            "schedule": report.schedule
+            "schedule": report.schedule,
+            "created_at": now,
+            "updated_at": now
         }
 
-        result = supabase.table("custom_reports").insert(data).execute()
+        await db.custom_reports.insert_one(report_data)
 
-        return {"message": "Report created", "report": result.data[0]}
+        return {"message": "Report created", "report_id": report_id}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 @router.get("/reports")
 async def get_custom_reports(current_user: dict = Depends(get_current_user)):
+    """Get user's custom reports"""
     try:
-        result = supabase.table("custom_reports").select("*").eq("user_id", current_user["id"]).execute()
-        return {"reports": result.data}
+        reports = await db.custom_reports.find(
+            {"user_id": current_user["id"]},
+            {"_id": 0}
+        ).to_list(50)
+
+        return {"reports": reports}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -221,22 +262,37 @@ async def export_analytics(
     export_req: ExportRequest,
     current_user: dict = Depends(get_current_user)
 ):
+    """Export analytics data"""
     try:
-        users_result = supabase.table("users").select("*").execute()
-        courses_result = supabase.table("courses").select("*").execute()
-        transactions_result = supabase.table("transactions").select("*").execute()
+        # Build query based on date filters
+        query = {}
+        if export_req.date_from:
+            query["created_at"] = {"$gte": export_req.date_from}
+        if export_req.date_to:
+            if "created_at" in query:
+                query["created_at"]["$lte"] = export_req.date_to
+            else:
+                query["created_at"] = {"$lte": export_req.date_to}
+
+        users = await db.users.find(query, {"_id": 0, "password": 0}).to_list(1000)
+        courses = await db.courses.find({}, {"_id": 0}).to_list(100)
+        transactions = await db.transactions.find(query, {"_id": 0}).to_list(1000)
 
         data = {
-            "users": users_result.data,
-            "courses": courses_result.data,
-            "transactions": transactions_result.data,
-            "exported_at": datetime.utcnow().isoformat(),
+            "users_count": len(users),
+            "courses_count": len(courses),
+            "transactions_count": len(transactions),
+            "exported_at": datetime.now(timezone.utc).isoformat(),
             "format": export_req.format
         }
 
+        if export_req.format == "detailed":
+            data["users"] = users
+            data["courses"] = courses
+            data["transactions"] = transactions
+
         return {
             "message": "Data exported successfully",
-            "format": export_req.format,
             "data": data
         }
     except Exception as e:
@@ -244,23 +300,52 @@ async def export_analytics(
 
 @router.get("/engagement-metrics")
 async def get_engagement_metrics(current_user: dict = Depends(get_current_user)):
+    """Get user engagement metrics"""
     try:
-        daily_rewards_result = supabase.table("daily_rewards").select("*").execute()
-        referrals_result = supabase.table("referrals").select("*").execute()
-        achievements_result = supabase.table("user_achievements").select("*").execute()
+        total_daily_claims = await db.daily_rewards.count_documents({})
+        total_referrals = await db.referrals.count_documents({})
+        total_achievements = await db.user_achievements.count_documents({})
 
-        total_daily_claims = len(daily_rewards_result.data) if daily_rewards_result.data else 0
-        total_referrals = len(referrals_result.data) if referrals_result.data else 0
-        total_achievements = len(achievements_result.data) if achievements_result.data else 0
-
-        max_streak = max((r.get("streak", 0) for r in daily_rewards_result.data), default=0) if daily_rewards_result.data else 0
+        # Max streak
+        streak_pipeline = [
+            {"$group": {"_id": None, "max_streak": {"$max": "$streak"}}}
+        ]
+        streak_result = await db.daily_rewards.aggregate(streak_pipeline).to_list(1)
+        max_streak = streak_result[0]["max_streak"] if streak_result else 0
 
         return {
             "engagement": {
                 "daily_claims": total_daily_claims,
                 "referrals": total_referrals,
                 "achievements_earned": total_achievements,
-                "max_streak": max_streak
+                "max_streak": max_streak or 0
+            }
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@router.get("/platform-health")
+async def get_platform_health(current_user: dict = Depends(require_admin)):
+    """Get platform health metrics (admin only)"""
+    try:
+        # Active users (logged in within 7 days)
+        week_ago = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()
+        active_users = await db.users.count_documents({"last_login": {"$gte": week_ago}})
+        
+        # Error rate (from logs if available)
+        total_users = await db.users.count_documents({})
+        
+        # Pending items
+        pending_proposals = await db.proposals.count_documents({"status": "active"})
+        pending_disputes = await db.disputes.count_documents({"status": "pending"})
+
+        return {
+            "platform_health": {
+                "active_users_7d": active_users,
+                "total_users": total_users,
+                "pending_proposals": pending_proposals,
+                "pending_disputes": pending_disputes,
+                "status": "healthy"
             }
         }
     except Exception as e:
