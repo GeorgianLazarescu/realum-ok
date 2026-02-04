@@ -153,13 +153,37 @@ backend/
 - [ ] Real blockchain integration (MultiversX/Polygon)
 
 ## Last Updated
-February 4, 2026 - Added frontend pages for P3 features (Search, Achievements, Social). Fixed critical backend bugs (ObjectId serialization, public endpoint auth, router prefixes).
+February 4, 2026 - Added Notifications Center and WebSocket Live Chat features.
 
-### New Frontend Pages Added
-- `/search` - Unified search with filters, suggestions, and trending content
-- `/achievements` - Achievement tracking, progress, and leaderboards
-- `/social` - Activity feed, followers, following, and reactions
+### New Features Added This Session
 
-### Updated Navigation
-- Desktop navbar includes Social and Achievements links
-- Mobile bottom nav includes Search, Social, and Awards
+#### 1. Notifications Center (`/notifications`)
+- Full notification management with filter by category
+- Mark as read / Mark all read functionality
+- Notification preferences (email, in-app, daily digest)
+- Category icons and type-based coloring
+- Real-time unread badge in navbar
+
+#### 2. WebSocket Live Chat (`/chat`)
+- Real-time message delivery without page refresh
+- Typing indicators ("Someone is typing...")
+- Online/Offline user status
+- Read receipts
+- User join/leave notifications
+- Channel creation and management
+
+### Backend WebSocket Architecture
+```python
+# Connection Manager (chat.py)
+- Manages active WebSocket connections per channel
+- Tracks online users and typing status
+- Broadcasts messages to all channel members
+- Handles connection lifecycle (connect/disconnect/reconnect)
+```
+
+### Frontend Pages Added
+- `/search` - Unified search with filters
+- `/achievements` - Achievement tracking and leaderboards
+- `/social` - Activity feed and following
+- `/notifications` - Notification center with settings
+- `/chat` - Real-time WebSocket chat
