@@ -1,13 +1,88 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  Users, Heart, MessageCircle, Share2, UserPlus, UserMinus,
-  TrendingUp, Sparkles, Send, MoreHorizontal
+  Users, Heart, MessageCircle, UserPlus, UserMinus,
+  TrendingUp, Sparkles
 } from 'lucide-react';
 import axios from 'axios';
 import { API } from '../utils/api';
 import { useAuth } from '../context/AuthContext';
 import { CyberCard, CyberButton } from '../components/common/CyberUI';
+
+// Helper function for time formatting
+const formatTimeAgo = (dateStr) => {
+  if (!dateStr) return '';
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diff = Math.floor((now - date) / 1000);
+  
+  if (diff < 60) return 'just now';
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+  return `${Math.floor(diff / 86400)}d ago`;
+};
+
+// Activity Card Component
+const ActivityCard = ({ activity, reactionTypes }) => (
+  <CyberCard className="p-4">
+    <div className="flex items-start gap-3">
+      <div className="w-10 h-10 bg-gradient-to-br from-neon-cyan to-neon-purple rounded-full flex items-center justify-center text-sm font-bold">
+        {activity.username?.[0]?.toUpperCase() || '?'}
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 mb-1">
+          <span className="font-mono text-sm font-bold">{activity.username}</span>
+          <span className="text-white/40 text-xs">{formatTimeAgo(activity.created_at)}</span>
+        </div>
+        <p className="text-sm text-white/80">{activity.description || activity.action}</p>
+        {activity.content && (
+          <p className="mt-2 p-3 bg-black/30 border-l-2 border-neon-cyan/50 text-sm text-white/70">
+            {activity.content}
+          </p>
+        )}
+        <div className="flex items-center gap-4 mt-3">
+          {reactionTypes.slice(0, 3).map(r => (
+            <button key={r.type} className="flex items-center gap-1 text-white/50 hover:text-white transition-colors">
+              <span>{r.emoji}</span>
+              <span className="text-xs">0</span>
+            </button>
+          ))}
+          <button className="flex items-center gap-1 text-white/50 hover:text-white transition-colors">
+            <MessageCircle className="w-4 h-4" />
+            <span className="text-xs">Comment</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </CyberCard>
+);
+
+// User Card Component
+const UserCard = ({ userData, currentUserId, onFollow, onUnfollow, showFollowButton = true }) => (
+  <div className="p-3 bg-black/30 border border-white/10 flex items-center gap-3">
+    <div className="w-10 h-10 bg-gradient-to-br from-neon-purple to-neon-cyan rounded-full flex items-center justify-center text-sm font-bold">
+      {userData.username?.[0]?.toUpperCase() || '?'}
+    </div>
+    <div className="flex-1 min-w-0">
+      <span className="font-mono text-sm block truncate">{userData.username}</span>
+      {userData.bio && (
+        <span className="text-xs text-white/50 line-clamp-1">{userData.bio}</span>
+      )}
+    </div>
+    {showFollowButton && userData.id !== currentUserId && (
+      <button
+        onClick={() => userData.is_following ? onUnfollow(userData.id) : onFollow(userData.id)}
+        className={`p-2 border transition-colors ${
+          userData.is_following 
+            ? 'border-white/30 text-white/50 hover:border-neon-red hover:text-neon-red' 
+            : 'border-neon-cyan text-neon-cyan hover:bg-neon-cyan/10'
+        }`}
+      >
+        {userData.is_following ? <UserMinus className="w-4 h-4" /> : <UserPlus className="w-4 h-4" />}
+      </button>
+    )}
+  </div>
+);
 
 const SocialPage = () => {
   const { user } = useAuth();
@@ -20,11 +95,7 @@ const SocialPage = () => {
   const [loading, setLoading] = useState(true);
   const [reactionTypes, setReactionTypes] = useState([]);
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true);
     try {
       const [feedRes, globalRes, statsRes, reactionsRes] = await Promise.all([
@@ -43,7 +114,11 @@ const SocialPage = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user.id]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   const loadFollowers = async () => {
     try {
@@ -82,78 +157,6 @@ const SocialPage = () => {
       console.error(err);
     }
   };
-
-  const formatTimeAgo = (dateStr) => {
-    if (!dateStr) return '';
-    const date = new Date(dateStr);
-    const now = new Date();
-    const diff = Math.floor((now - date) / 1000);
-    
-    if (diff < 60) return 'just now';
-    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-    if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-    return `${Math.floor(diff / 86400)}d ago`;
-  };
-
-  const ActivityCard = ({ activity }) => (
-    <CyberCard className="p-4">
-      <div className="flex items-start gap-3">
-        <div className="w-10 h-10 bg-gradient-to-br from-neon-cyan to-neon-purple rounded-full flex items-center justify-center text-sm font-bold">
-          {activity.username?.[0]?.toUpperCase() || '?'}
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="font-mono text-sm font-bold">{activity.username}</span>
-            <span className="text-white/40 text-xs">{formatTimeAgo(activity.created_at)}</span>
-          </div>
-          <p className="text-sm text-white/80">{activity.description || activity.action}</p>
-          {activity.content && (
-            <p className="mt-2 p-3 bg-black/30 border-l-2 border-neon-cyan/50 text-sm text-white/70">
-              {activity.content}
-            </p>
-          )}
-          <div className="flex items-center gap-4 mt-3">
-            {reactionTypes.slice(0, 3).map(r => (
-              <button key={r.type} className="flex items-center gap-1 text-white/50 hover:text-white transition-colors">
-                <span>{r.emoji}</span>
-                <span className="text-xs">0</span>
-              </button>
-            ))}
-            <button className="flex items-center gap-1 text-white/50 hover:text-white transition-colors">
-              <MessageCircle className="w-4 h-4" />
-              <span className="text-xs">Comment</span>
-            </button>
-          </div>
-        </div>
-      </div>
-    </CyberCard>
-  );
-
-  const UserCard = ({ userData, showFollowButton = true }) => (
-    <div className="p-3 bg-black/30 border border-white/10 flex items-center gap-3">
-      <div className="w-10 h-10 bg-gradient-to-br from-neon-purple to-neon-cyan rounded-full flex items-center justify-center text-sm font-bold">
-        {userData.username?.[0]?.toUpperCase() || '?'}
-      </div>
-      <div className="flex-1 min-w-0">
-        <span className="font-mono text-sm block truncate">{userData.username}</span>
-        {userData.bio && (
-          <span className="text-xs text-white/50 line-clamp-1">{userData.bio}</span>
-        )}
-      </div>
-      {showFollowButton && userData.id !== user?.id && (
-        <button
-          onClick={() => userData.is_following ? handleUnfollow(userData.id) : handleFollow(userData.id)}
-          className={`p-2 border transition-colors ${
-            userData.is_following 
-              ? 'border-white/30 text-white/50 hover:border-neon-red hover:text-neon-red' 
-              : 'border-neon-cyan text-neon-cyan hover:bg-neon-cyan/10'
-          }`}
-        >
-          {userData.is_following ? <UserMinus className="w-4 h-4" /> : <UserPlus className="w-4 h-4" />}
-        </button>
-      )}
-    </div>
-  );
 
   if (loading) {
     return (
@@ -242,7 +245,7 @@ const SocialPage = () => {
             >
               {feed.length > 0 ? (
                 feed.map((activity, i) => (
-                  <ActivityCard key={i} activity={activity} />
+                  <ActivityCard key={i} activity={activity} reactionTypes={reactionTypes} />
                 ))
               ) : (
                 <CyberCard className="p-8 text-center">
@@ -269,7 +272,7 @@ const SocialPage = () => {
             >
               {globalFeed.length > 0 ? (
                 globalFeed.map((activity, i) => (
-                  <ActivityCard key={i} activity={activity} />
+                  <ActivityCard key={i} activity={activity} reactionTypes={reactionTypes} />
                 ))
               ) : (
                 <CyberCard className="p-8 text-center">
@@ -297,7 +300,13 @@ const SocialPage = () => {
                 <div className="space-y-2">
                   {followers.length > 0 ? (
                     followers.map((f, i) => (
-                      <UserCard key={i} userData={f} />
+                      <UserCard 
+                        key={i} 
+                        userData={f} 
+                        currentUserId={user?.id}
+                        onFollow={handleFollow}
+                        onUnfollow={handleUnfollow}
+                      />
                     ))
                   ) : (
                     <p className="text-white/50 text-sm text-center py-8">
@@ -323,11 +332,17 @@ const SocialPage = () => {
                 <div className="space-y-2">
                   {following.length > 0 ? (
                     following.map((f, i) => (
-                      <UserCard key={i} userData={{...f, is_following: true}} />
+                      <UserCard 
+                        key={i} 
+                        userData={{...f, is_following: true}} 
+                        currentUserId={user?.id}
+                        onFollow={handleFollow}
+                        onUnfollow={handleUnfollow}
+                      />
                     ))
                   ) : (
                     <p className="text-white/50 text-sm text-center py-8">
-                      You're not following anyone yet. Explore the community!
+                      You are not following anyone yet. Explore the community!
                     </p>
                   )}
                 </div>
