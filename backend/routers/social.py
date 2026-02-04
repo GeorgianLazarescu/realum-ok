@@ -211,6 +211,9 @@ async def add_comment(
         }
 
         await db.comments.insert_one(comment_data)
+        
+        # Remove _id added by MongoDB
+        comment_data.pop("_id", None)
 
         # Update parent reply count if nested comment
         if comment.parent_id:
