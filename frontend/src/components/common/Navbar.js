@@ -148,6 +148,14 @@ const Navbar = () => {
               {user && (
                 <div className="border-t border-white/10 py-2">
                   <Link 
+                    to="/search" 
+                    onClick={() => setMenuOpen(false)} 
+                    className="flex items-center gap-3 px-4 py-3.5 text-white/70 hover:text-neon-cyan hover:bg-white/5"
+                  >
+                    <Search className="w-5 h-5" />
+                    <span>Search</span>
+                  </Link>
+                  <Link 
                     to="/simulation" 
                     onClick={() => setMenuOpen(false)} 
                     className="flex items-center gap-3 px-4 py-3.5 text-white/70 hover:text-neon-cyan hover:bg-white/5"
