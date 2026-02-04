@@ -217,16 +217,9 @@ metadata:
   run_ui: false
 
 test_plan:
-  current_focus:
-    - "Two-Factor Authentication (2FA) - M124-128"
-    - "GDPR Compliance - M129-133"
-    - "Rate Limiting & DDoS Protection - M134-138"
-    - "Centralized Logging & Error Tracking - M139-143"
-    - "Database Backup & Recovery - M144-148"
-    - "Password Complexity & Account Security"
-    - "Email Verification"
+  current_focus: []
   stuck_tasks: []
-  test_all: true
+  test_all: false
   test_priority: "high_first"
 
 agent_communication:
