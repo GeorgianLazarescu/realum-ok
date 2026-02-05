@@ -41,7 +41,8 @@ import {
   NotificationsPage,
   ChatPage,
   PurchaseRLMPage,
-  FamilyPage
+  FamilyPage,
+  BankPage
 } from './pages';
 
 // App Layout Component with Intro
