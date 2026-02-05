@@ -305,7 +305,7 @@ const Metaverse3DPage = () => {
         viewerRef.current = null;
       }
     };
-  }, [webglSupport]);
+  }, []); // Remove webglSupport dependency
 
   // Fly to zone
   const flyToZone = useCallback((zone) => {
