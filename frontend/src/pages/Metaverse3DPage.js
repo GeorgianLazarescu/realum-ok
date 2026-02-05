@@ -323,6 +323,9 @@ const Metaverse3DPage = () => {
         </div>
       )}
 
+      {/* Life Simulation Panel */}
+      <LifeSimulationPanel isOpen={showLifePanel} onClose={() => setShowLifePanel(false)} />
+
       {/* UI Overlay */}
       {!isLoading && (
         <div className="fixed pointer-events-none" style={{ top: '64px', left: 0, right: 0, bottom: 0 }}>
@@ -343,6 +346,13 @@ const Metaverse3DPage = () => {
                 title="Layers"
               >
                 <Layers className="w-5 h-5 text-white" />
+              </button>
+              <button
+                onClick={() => setShowLifePanel(true)}
+                className="p-2 bg-black/80 border border-purple-500/50 hover:border-purple-500 transition-colors"
+                title="Life Simulation"
+              >
+                <User className="w-5 h-5 text-purple-400" />
               </button>
             </div>
 
