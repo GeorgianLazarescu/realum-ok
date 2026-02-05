@@ -267,20 +267,23 @@ const Metaverse3DPage = () => {
             }
           });
         });
+        }
 
         // Click handler for zones
-        viewer.screenSpaceEventHandler.setInputAction((click) => {
-          const pickedObject = viewer.scene.pick(click.position);
-          if (defined(pickedObject) && pickedObject.id) {
-            const entity = pickedObject.id;
-            if (entity.properties && entity.properties.zoneData) {
-              const zoneData = entity.properties.zoneData.getValue();
-              setSelectedZone(zoneData);
+        if (viewer && viewer.screenSpaceEventHandler) {
+          viewer.screenSpaceEventHandler.setInputAction((click) => {
+            const pickedObject = viewer.scene.pick(click.position);
+            if (defined(pickedObject) && pickedObject.id) {
+              const entity = pickedObject.id;
+              if (entity.properties && entity.properties.zoneData) {
+                const zoneData = entity.properties.zoneData.getValue();
+                setSelectedZone(zoneData);
+              }
+            } else {
+              setSelectedZone(null);
             }
-          } else {
-            setSelectedZone(null);
-          }
-        }, ScreenSpaceEventType.LEFT_CLICK);
+          }, ScreenSpaceEventType.LEFT_CLICK);
+        }
 
         // Set initial camera position (overview of Earth)
         viewer.camera.setView({
