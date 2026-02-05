@@ -663,3 +663,415 @@ async def get_family_bonuses(current_user: dict = Depends(get_current_user)):
         })
     
     return bonuses
+
+
+# ============== FAMILY ACHIEVEMENTS ==============
+
+FAMILY_ACHIEVEMENTS = [
+    # Marriage Achievements
+    {"id": "first_love", "name": "First Love", "description": "Get married for the first time", "type": "marriage", "requirement": 1, "reward_rlm": 100, "badge": "💍"},
+    {"id": "silver_anniversary", "name": "Silver Anniversary", "description": "Stay married for 25 days", "type": "marriage_days", "requirement": 25, "reward_rlm": 250, "badge": "🥈"},
+    {"id": "golden_anniversary", "name": "Golden Anniversary", "description": "Stay married for 50 days", "type": "marriage_days", "requirement": 50, "reward_rlm": 500, "badge": "🥇"},
+    {"id": "diamond_anniversary", "name": "Diamond Anniversary", "description": "Stay married for 100 days", "type": "marriage_days", "requirement": 100, "reward_rlm": 1000, "badge": "💎"},
+    
+    # Children Achievements
+    {"id": "first_child", "name": "New Parent", "description": "Have your first child", "type": "children", "requirement": 1, "reward_rlm": 150, "badge": "👶"},
+    {"id": "growing_family", "name": "Growing Family", "description": "Have 3 children", "type": "children", "requirement": 3, "reward_rlm": 300, "badge": "👨‍👩‍👧‍👦"},
+    {"id": "big_family", "name": "Big Happy Family", "description": "Have 5 children", "type": "children", "requirement": 5, "reward_rlm": 500, "badge": "🏠"},
+    
+    # Parenting Achievements
+    {"id": "caring_parent", "name": "Caring Parent", "description": "Interact with your child 10 times", "type": "interactions", "requirement": 10, "reward_rlm": 50, "badge": "🤗"},
+    {"id": "devoted_parent", "name": "Devoted Parent", "description": "Interact with your child 50 times", "type": "interactions", "requirement": 50, "reward_rlm": 200, "badge": "❤️"},
+    {"id": "super_parent", "name": "Super Parent", "description": "Interact with your child 100 times", "type": "interactions", "requirement": 100, "reward_rlm": 500, "badge": "🦸"},
+    
+    # Education Achievements  
+    {"id": "teacher", "name": "Home Teacher", "description": "Educate a child to level 5", "type": "education", "requirement": 5, "reward_rlm": 100, "badge": "📚"},
+    {"id": "professor", "name": "Professor Parent", "description": "Educate a child to level 10", "type": "education", "requirement": 10, "reward_rlm": 250, "badge": "🎓"},
+    {"id": "scholar", "name": "Raising a Scholar", "description": "Educate a child to level 20", "type": "education", "requirement": 20, "reward_rlm": 500, "badge": "🏆"},
+]
+
+
+@router.get("/achievements")
+async def get_family_achievements(current_user: dict = Depends(get_current_user)):
+    """Get user's family achievements progress"""
+    user_id = current_user["id"]
+    
+    # Get user's family data
+    marriage = await get_user_marriage_status(user_id)
+    children = await db.children.find({
+        "$or": [{"parent1_id": user_id}, {"parent2_id": user_id}]
+    }).to_list(50)
+    
+    # Get claimed achievements
+    claimed = await db.family_achievements.find({
+        "user_id": user_id
+    }).to_list(100)
+    claimed_ids = {a["achievement_id"] for a in claimed}
+    
+    # Calculate progress for each achievement
+    achievements = []
+    
+    # Calculate marriage days
+    marriage_days = 0
+    if marriage:
+        married_at = datetime.fromisoformat(marriage["married_at"].replace("Z", "+00:00"))
+        marriage_days = (datetime.now(timezone.utc) - married_at).days
+    
+    # Calculate total interactions and max education
+    total_interactions = sum(c.get("total_interactions", 0) for c in children)
+    max_education = max((c.get("education_level", 0) for c in children), default=0)
+    
+    for ach in FAMILY_ACHIEVEMENTS:
+        progress = 0
+        current = 0
+        
+        if ach["type"] == "marriage":
+            current = 1 if marriage else 0
+            progress = 100 if marriage else 0
+        elif ach["type"] == "marriage_days":
+            current = marriage_days
+            progress = min(100, (marriage_days / ach["requirement"]) * 100)
+        elif ach["type"] == "children":
+            current = len(children)
+            progress = min(100, (len(children) / ach["requirement"]) * 100)
+        elif ach["type"] == "interactions":
+            current = total_interactions
+            progress = min(100, (total_interactions / ach["requirement"]) * 100)
+        elif ach["type"] == "education":
+            current = max_education
+            progress = min(100, (max_education / ach["requirement"]) * 100)
+        
+        achievements.append({
+            **ach,
+            "progress": round(progress, 1),
+            "current": current,
+            "claimed": ach["id"] in claimed_ids,
+            "can_claim": progress >= 100 and ach["id"] not in claimed_ids
+        })
+    
+    return {
+        "achievements": achievements,
+        "total_claimed": len(claimed_ids),
+        "total_achievements": len(FAMILY_ACHIEVEMENTS)
+    }
+
+
+@router.post("/achievements/{achievement_id}/claim")
+async def claim_family_achievement(
+    achievement_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Claim a completed family achievement"""
+    user_id = current_user["id"]
+    
+    # Find achievement
+    achievement = next((a for a in FAMILY_ACHIEVEMENTS if a["id"] == achievement_id), None)
+    if not achievement:
+        raise HTTPException(status_code=404, detail="Achievement not found")
+    
+    # Check if already claimed
+    existing = await db.family_achievements.find_one({
+        "user_id": user_id,
+        "achievement_id": achievement_id
+    })
+    if existing:
+        raise HTTPException(status_code=400, detail="Achievement already claimed")
+    
+    # Verify completion (simplified check)
+    marriage = await get_user_marriage_status(user_id)
+    children = await db.children.find({
+        "$or": [{"parent1_id": user_id}, {"parent2_id": user_id}]
+    }).to_list(50)
+    
+    can_claim = False
+    
+    if achievement["type"] == "marriage":
+        can_claim = marriage is not None
+    elif achievement["type"] == "marriage_days":
+        if marriage:
+            married_at = datetime.fromisoformat(marriage["married_at"].replace("Z", "+00:00"))
+            days = (datetime.now(timezone.utc) - married_at).days
+            can_claim = days >= achievement["requirement"]
+    elif achievement["type"] == "children":
+        can_claim = len(children) >= achievement["requirement"]
+    elif achievement["type"] == "interactions":
+        total = sum(c.get("total_interactions", 0) for c in children)
+        can_claim = total >= achievement["requirement"]
+    elif achievement["type"] == "education":
+        max_edu = max((c.get("education_level", 0) for c in children), default=0)
+        can_claim = max_edu >= achievement["requirement"]
+    
+    if not can_claim:
+        raise HTTPException(status_code=400, detail="Achievement requirements not met")
+    
+    # Claim achievement
+    await db.family_achievements.insert_one({
+        "id": str(uuid.uuid4()),
+        "user_id": user_id,
+        "achievement_id": achievement_id,
+        "claimed_at": datetime.now(timezone.utc).isoformat()
+    })
+    
+    # Grant reward
+    await db.users.update_one(
+        {"id": user_id},
+        {"$inc": {"realum_balance": achievement["reward_rlm"]}}
+    )
+    
+    # Add badge to user
+    await db.users.update_one(
+        {"id": user_id},
+        {"$addToSet": {"badges": achievement["badge"]}}
+    )
+    
+    return {
+        "achievement": achievement,
+        "reward_rlm": achievement["reward_rlm"],
+        "badge": achievement["badge"],
+        "message": f"Congratulations! You earned '{achievement['name']}' and received {achievement['reward_rlm']} RLM!"
+    }
+
+
+# ============== FAMILY EVENTS ==============
+
+@router.get("/events")
+async def get_family_events(current_user: dict = Depends(get_current_user)):
+    """Get upcoming and active family events (anniversaries, birthdays)"""
+    user_id = current_user["id"]
+    now = datetime.now(timezone.utc)
+    
+    events = []
+    
+    # Check wedding anniversary
+    marriage = await get_user_marriage_status(user_id)
+    if marriage:
+        married_at = datetime.fromisoformat(marriage["married_at"].replace("Z", "+00:00"))
+        
+        # Calculate anniversary this year
+        anniversary_this_year = married_at.replace(year=now.year)
+        if anniversary_this_year < now:
+            anniversary_this_year = anniversary_this_year.replace(year=now.year + 1)
+        
+        days_until = (anniversary_this_year - now).days
+        years_married = now.year - married_at.year
+        
+        # Anniversary bonus calculation
+        anniversary_bonus = min(500, 50 * years_married)  # 50 RLM per year, max 500
+        
+        # Check if today is anniversary
+        is_anniversary = (now.month == married_at.month and now.day == married_at.day)
+        
+        events.append({
+            "type": "anniversary",
+            "name": f"Wedding Anniversary ({years_married} years)" if years_married > 0 else "First Wedding Anniversary",
+            "date": anniversary_this_year.isoformat(),
+            "days_until": days_until if not is_anniversary else 0,
+            "is_today": is_anniversary,
+            "bonus_rlm": anniversary_bonus,
+            "partner": marriage.get("partner2_username") if marriage["partner1_id"] == user_id else marriage.get("partner1_username"),
+            "icon": "💒"
+        })
+        
+        # If today is anniversary, check if claimed
+        if is_anniversary:
+            claimed = await db.family_event_claims.find_one({
+                "user_id": user_id,
+                "event_type": "anniversary",
+                "year": now.year
+            })
+            events[-1]["claimed"] = claimed is not None
+            events[-1]["can_claim"] = claimed is None
+    
+    # Check children birthdays
+    children = await db.children.find({
+        "$or": [{"parent1_id": user_id}, {"parent2_id": user_id}]
+    }).to_list(50)
+    
+    for child in children:
+        birth_date_str = child.get("birth_date") or child.get("adopted_at")
+        if not birth_date_str:
+            continue
+            
+        birth_date = datetime.fromisoformat(birth_date_str.replace("Z", "+00:00"))
+        
+        # Calculate birthday this year
+        birthday_this_year = birth_date.replace(year=now.year)
+        if birthday_this_year < now:
+            birthday_this_year = birthday_this_year.replace(year=now.year + 1)
+        
+        days_until = (birthday_this_year - now).days
+        child_age = now.year - birth_date.year
+        
+        is_birthday = (now.month == birth_date.month and now.day == birth_date.day)
+        birthday_bonus = 25 + (child_age * 5)  # Base 25 + 5 per year of age
+        
+        events.append({
+            "type": "birthday",
+            "name": f"{child['name']}'s Birthday",
+            "child_id": child["id"],
+            "child_name": child["name"],
+            "date": birthday_this_year.isoformat(),
+            "days_until": days_until if not is_birthday else 0,
+            "is_today": is_birthday,
+            "age": child_age + 1,  # They're turning this age
+            "bonus_rlm": birthday_bonus,
+            "icon": "🎂"
+        })
+        
+        if is_birthday:
+            claimed = await db.family_event_claims.find_one({
+                "user_id": user_id,
+                "event_type": "birthday",
+                "child_id": child["id"],
+                "year": now.year
+            })
+            events[-1]["claimed"] = claimed is not None
+            events[-1]["can_claim"] = claimed is None
+    
+    # Sort by days until
+    events.sort(key=lambda x: x["days_until"])
+    
+    # Separate active (today) and upcoming
+    active_events = [e for e in events if e["is_today"]]
+    upcoming_events = [e for e in events if not e["is_today"]][:5]
+    
+    return {
+        "active_events": active_events,
+        "upcoming_events": upcoming_events,
+        "total_events": len(events)
+    }
+
+
+@router.post("/events/claim")
+async def claim_family_event_bonus(
+    event_type: str,
+    child_id: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
+):
+    """Claim bonus for a family event (anniversary or birthday)"""
+    user_id = current_user["id"]
+    now = datetime.now(timezone.utc)
+    
+    if event_type == "anniversary":
+        # Verify it's anniversary day
+        marriage = await get_user_marriage_status(user_id)
+        if not marriage:
+            raise HTTPException(status_code=400, detail="You are not married")
+        
+        married_at = datetime.fromisoformat(marriage["married_at"].replace("Z", "+00:00"))
+        
+        if not (now.month == married_at.month and now.day == married_at.day):
+            raise HTTPException(status_code=400, detail="It's not your anniversary today")
+        
+        # Check if already claimed
+        claimed = await db.family_event_claims.find_one({
+            "user_id": user_id,
+            "event_type": "anniversary",
+            "year": now.year
+        })
+        if claimed:
+            raise HTTPException(status_code=400, detail="Anniversary bonus already claimed this year")
+        
+        # Calculate bonus
+        years_married = now.year - married_at.year
+        bonus = min(500, 50 * max(1, years_married))
+        
+        # Claim
+        await db.family_event_claims.insert_one({
+            "id": str(uuid.uuid4()),
+            "user_id": user_id,
+            "event_type": "anniversary",
+            "year": now.year,
+            "bonus_rlm": bonus,
+            "claimed_at": now.isoformat()
+        })
+        
+        # Grant bonus to both partners
+        partner_id = marriage["partner2_id"] if marriage["partner1_id"] == user_id else marriage["partner1_id"]
+        
+        await db.users.update_one({"id": user_id}, {"$inc": {"realum_balance": bonus}})
+        await db.users.update_one({"id": partner_id}, {"$inc": {"realum_balance": bonus}})
+        
+        # Notify partner
+        await db.notifications.insert_one({
+            "id": str(uuid.uuid4()),
+            "user_id": partner_id,
+            "type": "anniversary_bonus",
+            "title": "Happy Anniversary! 💒",
+            "message": f"You and {current_user['username']} received {bonus} RLM for your anniversary!",
+            "read": False,
+            "created_at": now.isoformat()
+        })
+        
+        return {
+            "event": "anniversary",
+            "bonus_rlm": bonus,
+            "years_married": years_married,
+            "message": f"Happy Anniversary! You and your partner each received {bonus} RLM!"
+        }
+    
+    elif event_type == "birthday":
+        if not child_id:
+            raise HTTPException(status_code=400, detail="Child ID required for birthday claim")
+        
+        # Verify child exists and belongs to user
+        child = await db.children.find_one({
+            "id": child_id,
+            "$or": [{"parent1_id": user_id}, {"parent2_id": user_id}]
+        })
+        if not child:
+            raise HTTPException(status_code=404, detail="Child not found")
+        
+        birth_date_str = child.get("birth_date") or child.get("adopted_at")
+        if not birth_date_str:
+            raise HTTPException(status_code=400, detail="Child birth date not set")
+        
+        birth_date = datetime.fromisoformat(birth_date_str.replace("Z", "+00:00"))
+        
+        if not (now.month == birth_date.month and now.day == birth_date.day):
+            raise HTTPException(status_code=400, detail=f"It's not {child['name']}'s birthday today")
+        
+        # Check if already claimed
+        claimed = await db.family_event_claims.find_one({
+            "user_id": user_id,
+            "event_type": "birthday",
+            "child_id": child_id,
+            "year": now.year
+        })
+        if claimed:
+            raise HTTPException(status_code=400, detail="Birthday bonus already claimed this year")
+        
+        # Calculate bonus
+        child_age = now.year - birth_date.year
+        bonus = 25 + (child_age * 5)
+        
+        # Claim
+        await db.family_event_claims.insert_one({
+            "id": str(uuid.uuid4()),
+            "user_id": user_id,
+            "event_type": "birthday",
+            "child_id": child_id,
+            "year": now.year,
+            "bonus_rlm": bonus,
+            "claimed_at": now.isoformat()
+        })
+        
+        # Grant bonus
+        await db.users.update_one({"id": user_id}, {"$inc": {"realum_balance": bonus}})
+        
+        # Increase child's age
+        await db.children.update_one({"id": child_id}, {"$inc": {"age": 1}})
+        
+        # Increase child's happiness
+        await db.children.update_one({"id": child_id}, {"$set": {"happiness": 100}})
+        
+        return {
+            "event": "birthday",
+            "child_name": child["name"],
+            "new_age": child_age + 1,
+            "bonus_rlm": bonus,
+            "message": f"Happy Birthday {child['name']}! You received {bonus} RLM!"
+        }
+    
+    else:
+        raise HTTPException(status_code=400, detail="Invalid event type")
