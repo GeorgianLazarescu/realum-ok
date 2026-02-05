@@ -155,9 +155,36 @@ const Metaverse3DPage = () => {
   const [showLayers, setShowLayers] = useState(false);
   const [showInfo, setShowInfo] = useState(true);
   const [showLifePanel, setShowLifePanel] = useState(false);
+  const [showNPCs, setShowNPCs] = useState(true);
   const [flyToDestination, setFlyToDestination] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [webglSupport] = useState(() => checkWebGLSupport());
+  const [worldTime, setWorldTime] = useState(null);
+  const [npcs, setNpcs] = useState([]);
+  const [activeEvents, setActiveEvents] = useState([]);
+  const [selectedNPC, setSelectedNPC] = useState(null);
+
+  // Fetch world time and NPCs on mount
+  useEffect(() => {
+    const fetchWorldData = async () => {
+      try {
+        const [timeRes, npcRes, eventsRes] = await Promise.all([
+          axios.get(`${API}/api/events/world/time`),
+          axios.get(`${API}/api/events/npcs`),
+          axios.get(`${API}/api/events/calendar/active`)
+        ]);
+        setWorldTime(timeRes.data);
+        setNpcs(npcRes.data.npcs || []);
+        setActiveEvents(eventsRes.data.active_events || []);
+      } catch (error) {
+        console.error('Error fetching world data:', error);
+      }
+    };
+
+    fetchWorldData();
+    const interval = setInterval(fetchWorldData, 60000); // Update every minute
+    return () => clearInterval(interval);
+  }, []);
 
   // Handle viewer ready
   const handleViewerReady = useCallback(async (cesiumElement) => {
