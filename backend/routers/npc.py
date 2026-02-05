@@ -10,11 +10,23 @@ from datetime import datetime, timezone
 from enum import Enum
 import uuid
 import random
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 router = APIRouter(prefix="/api/npc", tags=["NPC System"])
 
 from core.database import db
 from core.auth import get_current_user
+
+# Import LLM integration
+try:
+    from emergentintegrations.llm.chat import LlmChat, UserMessage
+    LLM_AVAILABLE = True
+except ImportError:
+    LLM_AVAILABLE = False
+    print("Warning: emergentintegrations not available, AI chat will be disabled")
 
 # ============== NPC DATA ==============
 
