@@ -387,6 +387,34 @@ const Metaverse3DPage = () => {
               />
             </Entity>
           ))}
+
+          {/* NPC Markers */}
+          {showNPCs && npcs.map(npc => {
+            const loc = getNPCLocation(npc);
+            return (
+              <Entity
+                key={npc.id}
+                name={npc.name}
+                position={Cartesian3.fromDegrees(loc.lon, loc.lat, loc.height)}
+                onClick={() => flyToNPC(npc)}
+              >
+                <PointGraphics
+                  pixelSize={npc.available ? 14 : 10}
+                  color={Color.fromCssColorString(npc.available ? '#FFD700' : '#666666')}
+                  outlineColor={Color.WHITE}
+                  outlineWidth={2}
+                />
+                <LabelGraphics
+                  text={`${npc.avatar} ${npc.name}`}
+                  font="12px sans-serif"
+                  fillColor={Color.fromCssColorString(npc.available ? '#FFD700' : '#888888')}
+                  outlineColor={Color.BLACK}
+                  outlineWidth={2}
+                  pixelOffset={new Cartesian3(0, -25, 0)}
+                />
+              </Entity>
+            );
+          })}
         </Viewer>
       </div>
 
