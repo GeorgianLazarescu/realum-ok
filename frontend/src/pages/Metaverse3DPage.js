@@ -283,11 +283,10 @@ const Metaverse3DPage = () => {
             </Entity>
           ))}
         </Viewer>
-      </div>
 
       {/* Loading Overlay */}
       {isLoading && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/90 pt-16">
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/90">
           <div className="text-center">
             <div className="relative w-24 h-24 mx-auto mb-6">
               <Globe className="w-24 h-24 text-neon-cyan animate-pulse" />
@@ -301,9 +300,9 @@ const Metaverse3DPage = () => {
 
       {/* UI Overlay */}
       {!isLoading && (
-        <div className="absolute inset-0 pointer-events-none pt-16">
+        <div className="absolute inset-0 pointer-events-none">
           {/* Top controls */}
-          <div className="absolute top-20 left-4 right-4 flex justify-between items-start pointer-events-auto">
+          <div className="absolute top-4 left-4 right-4 flex justify-between items-start pointer-events-auto">
             {/* Left controls */}
             <div className="flex flex-col gap-2">
               <button
