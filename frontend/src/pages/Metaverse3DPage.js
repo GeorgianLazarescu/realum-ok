@@ -143,6 +143,7 @@ const Metaverse3DPage = () => {
   const [selectedZone, setSelectedZone] = useState(null);
   const [showLayers, setShowLayers] = useState(false);
   const [showInfo, setShowInfo] = useState(true);
+  const [showLifePanel, setShowLifePanel] = useState(false);
   const [flyToDestination, setFlyToDestination] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [webglSupport] = useState(() => checkWebGLSupport());
