@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
   Coins, Zap, Star, Award, Briefcase, GraduationCap, ShoppingBag, 
-  Layers, Vote, Building2, TrendingUp, Users
+  Layers, Vote, Building2, TrendingUp, Users, Heart
 } from 'lucide-react';
 import axios from 'axios';
 import { API } from '../utils/api';
