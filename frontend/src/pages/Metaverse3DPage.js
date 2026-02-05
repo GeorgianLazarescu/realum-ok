@@ -193,9 +193,13 @@ const Metaverse3DPage = () => {
     const viewer = cesiumElement.cesiumElement;
     viewerRef.current = viewer;
 
-    // Set dark background
-    viewer.scene.backgroundColor = Color.fromCssColorString('#000011');
-    viewer.scene.globe.baseColor = Color.fromCssColorString('#0a0a1a');
+    // Set background color based on time of day
+    const isNight = worldTime && !worldTime.is_day;
+    viewer.scene.backgroundColor = Color.fromCssColorString(isNight ? '#000005' : '#000011');
+    viewer.scene.globe.baseColor = Color.fromCssColorString(isNight ? '#050510' : '#0a0a1a');
+    
+    // Enable lighting for day/night cycle
+    viewer.scene.globe.enableLighting = true;
 
     // Try to add OSM Buildings
     try {
@@ -206,7 +210,17 @@ const Metaverse3DPage = () => {
     }
 
     setIsLoading(false);
-  }, []);
+  }, [worldTime]);
+
+  // Update scene lighting when world time changes
+  useEffect(() => {
+    if (viewerRef.current && worldTime) {
+      const viewer = viewerRef.current;
+      const isNight = !worldTime.is_day;
+      viewer.scene.backgroundColor = Color.fromCssColorString(isNight ? '#000005' : '#000011');
+      viewer.scene.globe.baseColor = Color.fromCssColorString(isNight ? '#050510' : '#0a0a1a');
+    }
+  }, [worldTime]);
 
   // Fly to zone
   const flyToZone = useCallback((zone) => {
