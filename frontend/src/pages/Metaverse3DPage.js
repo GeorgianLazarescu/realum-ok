@@ -417,30 +417,32 @@ const Metaverse3DPage = () => {
     >
       {/* 3D Canvas */}
       <div className="absolute inset-0 pt-16">
-        <Suspense fallback={<LoadingScreen />}>
-          <Canvas
-            shadows
-            camera={{ position: [25, 20, 25], fov: 50 }}
-            gl={{ antialias: true, alpha: false }}
-            onCreated={({ gl }) => {
-              gl.setClearColor('#000011');
-            }}
-          >
-            <OrbitControls 
-              enablePan={true}
-              enableZoom={true}
-              enableRotate={true}
-              minDistance={15}
-              maxDistance={60}
-              maxPolarAngle={Math.PI / 2.1}
-              target={[0, 0, 0]}
-            />
-            <Scene 
-              onZoneSelect={handleZoneSelect} 
-              selectedZone={selectedZone}
-            />
-          </Canvas>
-        </Suspense>
+        <CanvasErrorBoundary>
+          <Suspense fallback={<LoadingScreen />}>
+            <Canvas
+              shadows
+              camera={{ position: [25, 20, 25], fov: 50 }}
+              gl={{ antialias: true, alpha: false }}
+              onCreated={({ gl }) => {
+                gl.setClearColor('#000011');
+              }}
+            >
+              <OrbitControls 
+                enablePan={true}
+                enableZoom={true}
+                enableRotate={true}
+                minDistance={15}
+                maxDistance={60}
+                maxPolarAngle={Math.PI / 2.1}
+                target={[0, 0, 0]}
+              />
+              <Scene 
+                onZoneSelect={handleZoneSelect} 
+                selectedZone={selectedZone}
+              />
+            </Canvas>
+          </Suspense>
+        </CanvasErrorBoundary>
       </div>
 
       {/* UI Overlay */}
