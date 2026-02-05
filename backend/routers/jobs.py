@@ -191,9 +191,70 @@ async def purchase_item(item_id: str, current_user: dict = Depends(get_current_u
         {"$inc": {"downloads": 1}}
     )
     
+    # Add to user's inventory
+    inventory_item = {
+        "id": str(uuid.uuid4()),
+        "user_id": current_user["id"],
+        "item_id": item_id,
+        "item_title": item["title"],
+        "item_description": item["description"],
+        "item_category": item["category"],
+        "purchased_at": datetime.now(timezone.utc).isoformat(),
+        "price_paid": item["price_rlm"],
+        "seller_id": item["seller_id"],
+        "seller_name": item["seller_name"]
+    }
+    await db.user_inventory.insert_one(inventory_item)
+    
     return {
         "status": "purchased",
         "item": item["title"],
         "amount_paid": item["price_rlm"],
-        "amount_burned": burn_amount
+        "amount_burned": burn_amount,
+        "inventory_id": inventory_item["id"]
     }
+
+
+# ==================== INVENTORY ====================
+
+@router.get("/inventory")
+async def get_user_inventory(
+    category: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get user's purchased items inventory"""
+    query = {"user_id": current_user["id"]}
+    if category:
+        query["item_category"] = category
+    
+    items = await db.user_inventory.find(query, {"_id": 0}).sort("purchased_at", -1).to_list(100)
+    
+    # Count by category
+    all_items = await db.user_inventory.find({"user_id": current_user["id"]}, {"_id": 0}).to_list(500)
+    categories = {}
+    for item in all_items:
+        cat = item.get("item_category", "other")
+        categories[cat] = categories.get(cat, 0) + 1
+    
+    return {
+        "items": items,
+        "total_items": len(all_items),
+        "categories": categories
+    }
+
+
+@router.get("/inventory/{inventory_id}")
+async def get_inventory_item(
+    inventory_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get details of a specific inventory item"""
+    item = await db.user_inventory.find_one({
+        "id": inventory_id,
+        "user_id": current_user["id"]
+    }, {"_id": 0})
+    
+    if not item:
+        raise HTTPException(status_code=404, detail="Item not found in inventory")
+    
+    return {"item": item}
