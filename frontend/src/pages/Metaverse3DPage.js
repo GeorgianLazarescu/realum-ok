@@ -220,26 +220,33 @@ const Metaverse3DPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-black relative" data-testid="metaverse-3d-cesium-page">
-      {/* Cesium Viewer */}
-      <div className="absolute inset-0 pt-16">
-        <Viewer
-          ref={handleViewerReady}
-          full
-          animation={false}
-          baseLayerPicker={false}
-          fullscreenButton={false}
-          vrButton={false}
-          geocoder={false}
-          homeButton={false}
-          infoBox={false}
-          sceneModePicker={false}
-          selectionIndicator={true}
-          timeline={false}
-          navigationHelpButton={false}
-          onClick={handleEntityClick}
-          style={{ position: 'absolute', top: 64, left: 0, right: 0, bottom: 0 }}
-        >
+    <div className="fixed inset-0 bg-black" data-testid="metaverse-3d-cesium-page" style={{ paddingTop: '64px' }}>
+      {/* Cesium Viewer - Full Screen */}
+      <Viewer
+        ref={handleViewerReady}
+        full
+        animation={false}
+        baseLayerPicker={false}
+        fullscreenButton={false}
+        vrButton={false}
+        geocoder={false}
+        homeButton={false}
+        infoBox={false}
+        sceneModePicker={false}
+        selectionIndicator={true}
+        timeline={false}
+        navigationHelpButton={false}
+        onClick={handleEntityClick}
+        style={{ 
+          position: 'absolute', 
+          top: 0, 
+          left: 0, 
+          right: 0, 
+          bottom: 0,
+          width: '100%',
+          height: '100%'
+        }}
+      >
           {/* Camera fly to */}
           {flyToDestination && (
             <CameraFlyTo
