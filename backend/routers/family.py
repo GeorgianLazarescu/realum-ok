@@ -599,7 +599,9 @@ async def interact_with_child(
         raise HTTPException(status_code=404, detail="Child not found")
     
     # Update child stats based on interaction
-    updates = {"last_interaction": datetime.now(timezone.utc).isoformat()}
+    updates = {
+        "last_interaction": datetime.now(timezone.utc).isoformat()
+    }
     reward_xp = 0
     
     if interaction_type == "play":
@@ -612,7 +614,14 @@ async def interact_with_child(
         updates["education_level"] = child.get("education_level", 0) + 1
         reward_xp = 10
     
-    await db.children.update_one({"id": child_id}, {"$set": updates})
+    # Increment total interactions counter for achievements
+    await db.children.update_one(
+        {"id": child_id}, 
+        {
+            "$set": updates,
+            "$inc": {"total_interactions": 1}
+        }
+    )
     
     # Grant XP to parent
     await db.users.update_one(
