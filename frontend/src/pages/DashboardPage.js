@@ -38,7 +38,7 @@ const DashboardPage = () => {
     { label: t('marketplace'), icon: ShoppingBag, path: '/marketplace', color: '#FF6B35' },
     { label: t('metaverse'), icon: Layers, path: '/metaverse/3d', color: '#00F0FF' },
     { label: t('voting'), icon: Vote, path: '/voting', color: '#40C4FF' },
-    { label: 'Referral', icon: Users, path: '/referral', color: '#00FF88' }
+    { label: 'Family', icon: Heart, path: '/family', color: '#FF69B4' }
   ];
   
   return (
