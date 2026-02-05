@@ -11,6 +11,23 @@ import { CyberCard, CyberButton } from '../components/common/CyberUI';
 import { Viewer, Entity, PointGraphics, LabelGraphics, CameraFlyTo } from 'resium';
 import { Ion, Cartesian3, Color, createOsmBuildingsAsync, Math as CesiumMath } from 'cesium';
 
+// Import Cesium CSS
+import 'cesium/Build/Cesium/Widgets/widgets.css';
+
+// Custom CSS to make Cesium fill container
+const cesiumStyles = `
+  #cesium-container .cesium-viewer,
+  #cesium-container .cesium-viewer-cesiumWidgetContainer,
+  #cesium-container .cesium-widget,
+  #cesium-container .cesium-widget canvas {
+    width: 100% !important;
+    height: 100% !important;
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+  }
+`;
+
 // Set Cesium Ion token
 const CESIUM_TOKEN = process.env.REACT_APP_CESIUM_ION_TOKEN;
 if (CESIUM_TOKEN) {
