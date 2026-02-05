@@ -545,3 +545,163 @@ async def get_conversation_history(
     }).sort("started_at", -1).limit(20).to_list(20)
     
     return {"conversations": [serialize_doc(c) for c in conversations]}
+
+
+# ============== AI CHAT MODELS ==============
+
+class AIChatMessage(BaseModel):
+    npc_id: str
+    message: str
+    session_id: Optional[str] = None
+
+class AIChatResponse(BaseModel):
+    response: str
+    session_id: str
+    npc_name: str
+    npc_avatar: str
+
+
+# ============== AI CHAT ENDPOINTS ==============
+
+# Store active chat sessions in memory (in production, use Redis)
+_chat_sessions: Dict[str, "LlmChat"] = {}
+
+def get_npc_system_prompt(npc_id: str) -> str:
+    """Generate a system prompt for the NPC based on their personality"""
+    if npc_id not in NPCS:
+        return "You are a helpful NPC in the REALUM metaverse."
+    
+    npc = NPCS[npc_id]
+    return f"""You are {npc['name']}, a {npc['role']} in the REALUM metaverse - an educational and economic virtual world.
+
+CHARACTER DETAILS:
+- Name: {npc['name']}
+- Role: {npc['role']}
+- Location: {npc['location']}
+- Personality: {npc['personality']}
+- Expertise: {', '.join(npc['expertise'])}
+
+BACKGROUND:
+REALUM is a virtual metaverse where users can learn skills, complete jobs, earn RLM tokens, participate in DAO governance, and build their virtual life. The world has various zones including Learning Zone, Jobs Hub, Marketplace, Social Plaza, Treasury, and DAO Hall.
+
+BEHAVIOR GUIDELINES:
+1. Stay in character as {npc['name']} at all times
+2. Be helpful and guide users about the metaverse features related to your expertise
+3. Keep responses concise (2-4 sentences typically)
+4. Use your personality traits: {npc['personality']}
+5. You can mention RLM tokens, courses, jobs, and other game features
+6. Be friendly and encouraging to newcomers
+7. If asked about things outside your expertise, direct users to the appropriate NPC
+
+GREETING STYLE: {npc['greeting']}
+
+Respond naturally as this character would, maintaining their unique voice and personality."""
+
+
+@router.post("/ai-chat")
+async def ai_chat_with_npc(
+    data: AIChatMessage,
+    current_user: dict = Depends(get_current_user)
+):
+    """Have a free-form AI conversation with an NPC"""
+    if not LLM_AVAILABLE:
+        raise HTTPException(
+            status_code=503, 
+            detail="AI chat is not available. Please use dialog options instead."
+        )
+    
+    if data.npc_id not in NPCS:
+        raise HTTPException(status_code=404, detail="NPC not found")
+    
+    npc = NPCS[data.npc_id]
+    
+    # Get or create session ID
+    session_id = data.session_id or f"{current_user['id']}_{data.npc_id}_{uuid.uuid4().hex[:8]}"
+    
+    # Get API key
+    api_key = os.environ.get("EMERGENT_LLM_KEY")
+    if not api_key:
+        raise HTTPException(status_code=500, detail="LLM API key not configured")
+    
+    try:
+        # Create or get chat instance
+        if session_id not in _chat_sessions:
+            system_prompt = get_npc_system_prompt(data.npc_id)
+            chat = LlmChat(
+                api_key=api_key,
+                session_id=session_id,
+                system_message=system_prompt
+            )
+            # Use GPT-4o for NPC conversations
+            chat.with_model("openai", "gpt-4o")
+            _chat_sessions[session_id] = chat
+        else:
+            chat = _chat_sessions[session_id]
+        
+        # Send message and get response
+        user_message = UserMessage(text=data.message)
+        response = await chat.send_message(user_message)
+        
+        # Store conversation in database
+        conversation_record = {
+            "session_id": session_id,
+            "user_id": current_user["id"],
+            "npc_id": data.npc_id,
+            "user_message": data.message,
+            "npc_response": response,
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }
+        await db.npc_ai_conversations.insert_one(conversation_record)
+        
+        return {
+            "response": response,
+            "session_id": session_id,
+            "npc_name": npc["name"],
+            "npc_avatar": npc["avatar"]
+        }
+        
+    except Exception as e:
+        print(f"AI Chat Error: {e}")
+        # Fallback to a generic response
+        return {
+            "response": f"*{npc['name']} seems distracted* My apologies, I'm having trouble focusing right now. Please try again or use the dialog options.",
+            "session_id": session_id,
+            "npc_name": npc["name"],
+            "npc_avatar": npc["avatar"],
+            "error": True
+        }
+
+
+@router.get("/ai-chat/history/{npc_id}")
+async def get_ai_chat_history(
+    npc_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get AI chat history with a specific NPC"""
+    if npc_id not in NPCS:
+        raise HTTPException(status_code=404, detail="NPC not found")
+    
+    messages = await db.npc_ai_conversations.find({
+        "user_id": current_user["id"],
+        "npc_id": npc_id
+    }).sort("timestamp", -1).limit(50).to_list(50)
+    
+    return {
+        "npc": {
+            "name": NPCS[npc_id]["name"],
+            "avatar": NPCS[npc_id]["avatar"]
+        },
+        "messages": [serialize_doc(m) for m in reversed(messages)]
+    }
+
+
+@router.delete("/ai-chat/session/{session_id}")
+async def end_ai_chat_session(
+    session_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """End an AI chat session and clean up"""
+    if session_id in _chat_sessions:
+        del _chat_sessions[session_id]
+    
+    return {"message": "Session ended", "session_id": session_id}
