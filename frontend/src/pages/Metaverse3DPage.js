@@ -3,10 +3,21 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { 
   Home, Info, Layers, MapPin, Globe, Building2, Mountain,
-  ZoomIn, ZoomOut, RotateCcw, Search, X, AlertTriangle, User
+  ZoomIn, ZoomOut, RotateCcw, Search, X, AlertTriangle, User,
+  Users, Sun, Moon, Sunrise, Sunset, Calendar
 } from 'lucide-react';
+import axios from 'axios';
 import { CyberCard, CyberButton } from '../components/common/CyberUI';
 import LifeSimulationPanel from '../components/LifeSimulationPanel';
+
+// Import Resium (React wrapper for Cesium)
+import { Viewer, Entity, PointGraphics, LabelGraphics, CameraFlyTo } from 'resium';
+import { Ion, Cartesian3, Color, createOsmBuildingsAsync, Math as CesiumMath, JulianDate, ClockRange, ClockStep } from 'cesium';
+
+// Import Cesium CSS
+import 'cesium/Build/Cesium/Widgets/widgets.css';
+
+const API = process.env.REACT_APP_BACKEND_URL;
 
 // Import Resium (React wrapper for Cesium)
 import { Viewer, Entity, PointGraphics, LabelGraphics, CameraFlyTo } from 'resium';
