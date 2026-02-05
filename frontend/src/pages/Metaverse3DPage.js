@@ -223,19 +223,18 @@ const Metaverse3DPage = () => {
     <div className="fixed inset-0 bg-black" data-testid="metaverse-3d-cesium-page">
       {/* Cesium Viewer Container - Full Screen below navbar */}
       <div 
+        id="cesium-container"
         style={{ 
-          position: 'absolute',
+          position: 'fixed',
           top: '64px',
           left: 0,
           right: 0,
           bottom: 0,
-          width: '100%',
-          height: 'calc(100vh - 64px)'
+          overflow: 'hidden'
         }}
       >
         <Viewer
           ref={handleViewerReady}
-          full
           animation={false}
           baseLayerPicker={false}
           fullscreenButton={false}
@@ -248,6 +247,13 @@ const Metaverse3DPage = () => {
           timeline={false}
           navigationHelpButton={false}
           onClick={handleEntityClick}
+          style={{ 
+            width: '100%',
+            height: '100%',
+            position: 'absolute',
+            top: 0,
+            left: 0
+          }}
         >
           {/* Camera fly to */}
           {flyToDestination && (
