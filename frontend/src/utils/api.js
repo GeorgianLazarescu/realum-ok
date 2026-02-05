@@ -24,6 +24,21 @@ apiClient.interceptors.request.use(
   }
 );
 
+// Also add interceptor to global axios for backward compatibility with existing code
+// This ensures all axios.get/post calls also get the token automatically
+axios.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('token');
+    if (token && !config.headers.Authorization) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
 // Add response interceptor to handle 401 errors
 apiClient.interceptors.response.use(
   (response) => response,
@@ -32,7 +47,6 @@ apiClient.interceptors.response.use(
     if (error.response?.status === 401) {
       const url = error.config?.url || '';
       if (!url.includes('/auth/login') && !url.includes('/auth/register')) {
-        // Token might be expired or invalid
         console.warn('Authentication error - token may be invalid');
       }
     }
