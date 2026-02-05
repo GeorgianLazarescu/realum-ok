@@ -7,7 +7,7 @@ import requests
 import time
 import os
 
-BACKEND_URL = os.getenv('REACT_APP_BACKEND_URL', 'https://virtual-realum.preview.emergentagent.com')
+BACKEND_URL = os.getenv('REACT_APP_BACKEND_URL', 'https://realumearth.preview.emergentagent.com')
 API_BASE = f"{BACKEND_URL}/api"
 
 def make_request(method: str, endpoint: str, data: dict = None):
