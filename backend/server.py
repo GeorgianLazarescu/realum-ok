@@ -43,6 +43,8 @@ from routers.mobile import router as mobile_router
 from routers.life_simulation import router as life_router
 from routers.events import router as events_router
 from routers.npc import router as npc_router
+from routers.payments import router as payments_router
+from routers.family import router as family_router
 
 from core.security import SecurityHeadersMiddleware, RequestSizeMiddleware
 from core.rate_limiter import rate_limiter
