@@ -690,6 +690,7 @@ const Metaverse3DPage = () => {
           )}
         </AnimatePresence>
       </div>
+      )}
     </div>
   );
 };
