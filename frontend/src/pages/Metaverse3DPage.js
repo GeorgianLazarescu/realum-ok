@@ -457,6 +457,13 @@ const Metaverse3DPage = () => {
                 <Layers className="w-5 h-5 text-white" />
               </button>
               <button
+                onClick={() => setShowNPCs(!showNPCs)}
+                className={`p-2 bg-black/80 border transition-colors ${showNPCs ? 'border-yellow-500' : 'border-white/30 hover:border-yellow-500'}`}
+                title="Toggle NPCs"
+              >
+                <Users className="w-5 h-5 text-yellow-400" />
+              </button>
+              <button
                 onClick={() => setShowLifePanel(true)}
                 className="p-2 bg-black/80 border border-purple-500/50 hover:border-purple-500 transition-colors"
                 title="Life Simulation"
