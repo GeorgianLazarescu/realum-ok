@@ -1,471 +1,557 @@
-import React, { useRef, useState, Suspense, useEffect } from 'react';
-import { Canvas, useFrame } from '@react-three/fiber';
-import { OrbitControls, Stars, Html } from '@react-three/drei';
-import * as THREE from 'three';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { 
-  Maximize2, Minimize2, Home, Info, AlertTriangle, Chrome, Monitor,
-  GraduationCap, Briefcase, Vote, Wallet, ShoppingBag, Users
+  Home, Info, Layers, MapPin, Globe, Building2, Mountain,
+  ZoomIn, ZoomOut, RotateCcw, Search, X, Loader2, AlertTriangle
 } from 'lucide-react';
 import { CyberCard, CyberButton } from '../components/common/CyberUI';
 
-// WebGL2 compatibility check
+// Import Cesium
+import * as Cesium from 'cesium';
+import 'cesium/Build/Cesium/Widgets/widgets.css';
+
+// Set Cesium Ion token
+Cesium.Ion.defaultAccessToken = process.env.REACT_APP_CESIUM_ION_TOKEN;
+
+// REALUM zones mapped to real-world locations
+const REALUM_ZONES = [
+  { 
+    id: 'learning', 
+    name: 'Learning Zone', 
+    city: 'Oxford, UK',
+    coords: { lon: -1.2577, lat: 51.7520, height: 500 },
+    color: '#9D4EDD', 
+    path: '/courses', 
+    description: 'World-renowned education hub'
+  },
+  { 
+    id: 'jobs', 
+    name: 'Jobs Hub', 
+    city: 'San Francisco, USA',
+    coords: { lon: -122.4194, lat: 37.7749, height: 500 },
+    color: '#FF003C', 
+    path: '/jobs', 
+    description: 'Tech & innovation capital'
+  },
+  { 
+    id: 'governance', 
+    name: 'DAO Hall', 
+    city: 'Zug, Switzerland',
+    coords: { lon: 8.5156, lat: 47.1724, height: 500 },
+    color: '#40C4FF', 
+    path: '/voting', 
+    description: 'Crypto Valley governance'
+  },
+  { 
+    id: 'marketplace', 
+    name: 'Marketplace', 
+    city: 'Dubai, UAE',
+    coords: { lon: 55.2708, lat: 25.2048, height: 500 },
+    color: '#00FF88', 
+    path: '/marketplace', 
+    description: 'Global trade center'
+  },
+  { 
+    id: 'social', 
+    name: 'Social Plaza', 
+    city: 'Tokyo, Japan',
+    coords: { lon: 139.6917, lat: 35.6895, height: 500 },
+    color: '#00F0FF', 
+    path: '/social', 
+    description: 'Cultural connection hub'
+  },
+  { 
+    id: 'treasury', 
+    name: 'Treasury', 
+    city: 'Singapore',
+    coords: { lon: 103.8198, lat: 1.3521, height: 500 },
+    color: '#FFD700', 
+    path: '/wallet', 
+    description: 'Financial center'
+  },
+];
+
+// WebGL support check
 const checkWebGLSupport = () => {
   try {
     const canvas = document.createElement('canvas');
-    const gl = canvas.getContext('webgl2') || canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
-    if (!gl) return { supported: false, version: null };
-    
-    const isWebGL2 = gl instanceof WebGL2RenderingContext;
-    return { 
-      supported: true, 
-      version: isWebGL2 ? 2 : 1,
-      renderer: gl.getParameter(gl.RENDERER),
-      vendor: gl.getParameter(gl.VENDOR)
-    };
+    const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
+    return { supported: !!gl, version: gl instanceof WebGL2RenderingContext ? 2 : 1 };
   } catch (e) {
-    return { supported: false, version: null, error: e.message };
+    return { supported: false, error: e.message };
   }
 };
 
 // Browser compatibility error component
-const BrowserCompatibilityError = ({ webglInfo }) => {
+const BrowserCompatibilityError = () => {
   const navigate = useNavigate();
   
   return (
-    <div 
-      className="min-h-screen bg-gradient-to-b from-gray-900 via-black to-gray-900 flex items-center justify-center p-4"
-      data-testid="webgl-error-page"
-    >
-      <div className="max-w-lg w-full">
-        <CyberCard className="p-8 bg-black/90 border-red-500/50">
-          <div className="text-center">
-            {/* Warning Icon */}
-            <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-red-500/20 flex items-center justify-center border-2 border-red-500/50">
-              <AlertTriangle className="w-10 h-10 text-red-500" />
-            </div>
-            
-            {/* Title */}
-            <h1 className="font-orbitron text-2xl font-bold text-red-500 mb-2">
-              Browser Not Supported
-            </h1>
-            
-            {/* Message */}
-            <p className="text-white/70 mb-6">
-              The 3D Metaverse requires <span className="text-neon-cyan font-semibold">WebGL2</span> technology 
-              which is not available in your current browser.
-            </p>
-            
-            {/* Technical Details */}
-            <div className="bg-gray-900/50 rounded-lg p-4 mb-6 text-left">
-              <p className="text-xs font-mono text-white/40 mb-2">DIAGNOSTIC INFO:</p>
-              <div className="text-xs text-white/60 space-y-1">
-                <p>• WebGL Support: <span className={webglInfo?.supported ? 'text-yellow-500' : 'text-red-500'}>
-                  {webglInfo?.supported ? `Version ${webglInfo.version} (needs v2)` : 'Not Available'}
-                </span></p>
-                <p>• Browser: <span className="text-white/40">{navigator.userAgent.split(' ').slice(-2).join(' ')}</span></p>
-              </div>
-            </div>
-            
-            {/* Recommended Browsers */}
-            <div className="mb-6">
-              <p className="text-sm text-white/60 mb-3">Please use a modern browser:</p>
-              <div className="flex justify-center gap-4">
-                <a 
-                  href="https://www.google.com/chrome/" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="flex flex-col items-center gap-2 p-3 bg-white/5 hover:bg-white/10 rounded-lg transition-colors group"
-                >
-                  <Chrome className="w-8 h-8 text-white/60 group-hover:text-neon-cyan transition-colors" />
-                  <span className="text-xs text-white/60 group-hover:text-white transition-colors">Chrome</span>
-                </a>
-                <a 
-                  href="https://www.mozilla.org/firefox/" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="flex flex-col items-center gap-2 p-3 bg-white/5 hover:bg-white/10 rounded-lg transition-colors group"
-                >
-                  <Monitor className="w-8 h-8 text-white/60 group-hover:text-orange-500 transition-colors" />
-                  <span className="text-xs text-white/60 group-hover:text-white transition-colors">Firefox</span>
-                </a>
-                <a 
-                  href="https://www.microsoft.com/edge" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="flex flex-col items-center gap-2 p-3 bg-white/5 hover:bg-white/10 rounded-lg transition-colors group"
-                >
-                  <Monitor className="w-8 h-8 text-white/60 group-hover:text-blue-500 transition-colors" />
-                  <span className="text-xs text-white/60 group-hover:text-white transition-colors">Edge</span>
-                </a>
-              </div>
-            </div>
-            
-            {/* Actions */}
-            <div className="flex gap-3 justify-center">
-              <CyberButton 
-                onClick={() => navigate('/metaverse')}
-                className="px-6"
-              >
-                <Home className="w-4 h-4 mr-2" />
-                Use 2D Map Instead
-              </CyberButton>
-            </div>
-            
-            <p className="text-xs text-white/30 mt-4">
-              The 2D map offers similar navigation without requiring WebGL2.
-            </p>
-          </div>
-        </CyberCard>
-      </div>
+    <div className="min-h-screen bg-gradient-to-b from-gray-900 via-black to-gray-900 flex items-center justify-center p-4">
+      <CyberCard className="max-w-lg p-8 bg-black/90 border-red-500/50">
+        <div className="text-center">
+          <AlertTriangle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+          <h1 className="font-orbitron text-2xl font-bold text-red-500 mb-2">
+            Browser Not Supported
+          </h1>
+          <p className="text-white/70 mb-6">
+            The 3D Earth view requires WebGL2 which is not available in your browser.
+            Please use Chrome, Firefox, or the latest Edge.
+          </p>
+          <CyberButton onClick={() => navigate('/metaverse')}>
+            <Home className="w-4 h-4 mr-2" />
+            Use 2D Map Instead
+          </CyberButton>
+        </div>
+      </CyberCard>
     </div>
   );
 };
 
-// Zone configurations
-const ZONES = [
-  { id: 'learning', name: 'Learning Zone', position: [-12, 0, -12], color: '#9D4EDD', icon: GraduationCap, path: '/courses', description: 'Courses & Education' },
-  { id: 'jobs', name: 'Jobs Hub', position: [12, 0, -12], color: '#FF003C', icon: Briefcase, path: '/jobs', description: 'Find Work & Bounties' },
-  { id: 'governance', name: 'DAO Hall', position: [-12, 0, 12], color: '#40C4FF', icon: Vote, path: '/voting', description: 'Vote on Proposals' },
-  { id: 'marketplace', name: 'Marketplace', position: [12, 0, 12], color: '#00FF88', icon: ShoppingBag, path: '/marketplace', description: 'Trade Resources' },
-  { id: 'social', name: 'Social Plaza', position: [0, 0, 0], color: '#00F0FF', icon: Users, path: '/social', description: 'Connect with Others' },
-  { id: 'treasury', name: 'Treasury', position: [0, 0, -18], color: '#FFD700', icon: Wallet, path: '/wallet', description: 'Manage Tokens' },
-];
-
-// Ground component
-function Ground() {
-  return (
-    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.5, 0]} receiveShadow>
-      <planeGeometry args={[80, 80]} />
-      <meshStandardMaterial color="#111122" />
-    </mesh>
-  );
-}
-
-// Grid helper
-function Grid() {
-  return (
-    <gridHelper args={[80, 40, '#00F0FF', '#1a1a3e']} position={[0, -0.49, 0]} />
-  );
-}
-
-// Zone Building
-function ZoneBuilding({ zone, onSelect, isSelected }) {
-  const groupRef = useRef();
-  const [hovered, setHovered] = useState(false);
-  
-  useFrame((state) => {
-    if (groupRef.current) {
-      // Floating animation for the main cube
-      const floatY = Math.sin(state.clock.elapsedTime + zone.position[0] * 0.1) * 0.3;
-      groupRef.current.children[1].position.y = 3 + floatY;
-      
-      // Rotate when hovered
-      if (hovered) {
-        groupRef.current.children[1].rotation.y += 0.02;
-      }
-    }
-  });
-
-  return (
-    <group ref={groupRef} position={zone.position}>
-      {/* Base platform */}
-      <mesh position={[0, 0, 0]} receiveShadow castShadow>
-        <cylinderGeometry args={[4, 4.5, 0.5, 6]} />
-        <meshStandardMaterial 
-          color={zone.color}
-          emissive={zone.color}
-          emissiveIntensity={hovered ? 0.5 : 0.2}
-          metalness={0.8}
-          roughness={0.2}
-        />
-      </mesh>
-      
-      {/* Floating cube building */}
-      <mesh 
-        position={[0, 3, 0]}
-        castShadow
-        onPointerOver={(e) => { e.stopPropagation(); setHovered(true); }}
-        onPointerOut={() => setHovered(false)}
-        onClick={(e) => { e.stopPropagation(); onSelect(zone); }}
-      >
-        <boxGeometry args={[3, 3, 3]} />
-        <meshStandardMaterial 
-          color={hovered ? '#ffffff' : zone.color}
-          emissive={zone.color}
-          emissiveIntensity={hovered ? 0.8 : 0.4}
-          metalness={0.6}
-          roughness={0.3}
-        />
-      </mesh>
-      
-      {/* Glowing ring around base */}
-      <mesh position={[0, 0.3, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[4.2, 4.8, 32]} />
-        <meshBasicMaterial 
-          color={zone.color}
-          transparent
-          opacity={hovered ? 0.9 : 0.5}
-          side={THREE.DoubleSide}
-        />
-      </mesh>
-
-      {/* Label */}
-      <Html position={[0, 6, 0]} center distanceFactor={20}>
-        <div 
-          className={`px-3 py-1.5 text-sm font-mono border whitespace-nowrap cursor-pointer transition-all ${
-            hovered || isSelected ? 'bg-black border-white scale-110' : 'bg-black/80 border-white/40'
-          }`}
-          style={{ color: zone.color }}
-          onClick={() => onSelect(zone)}
-        >
-          {zone.name}
-        </div>
-      </Html>
-      
-      {/* Beam when selected */}
-      {isSelected && (
-        <mesh position={[0, 8, 0]}>
-          <cylinderGeometry args={[0.1, 0.1, 16, 8]} />
-          <meshBasicMaterial color={zone.color} transparent opacity={0.6} />
-        </mesh>
-      )}
-    </group>
-  );
-}
-
-// Central tower
-function CentralTower() {
-  const towerRef = useRef();
-  
-  useFrame((state) => {
-    if (towerRef.current) {
-      towerRef.current.rotation.y += 0.005;
-    }
-  });
-
-  return (
-    <group position={[0, 0, 0]}>
-      {/* Base */}
-      <mesh position={[0, 0.5, 0]}>
-        <cylinderGeometry args={[2, 2.5, 1, 8]} />
-        <meshStandardMaterial color="#1a1a2e" metalness={0.9} roughness={0.1} />
-      </mesh>
-      
-      {/* Rotating crystal */}
-      <mesh ref={towerRef} position={[0, 4, 0]}>
-        <octahedronGeometry args={[1.5, 0]} />
-        <meshStandardMaterial 
-          color="#00F0FF"
-          emissive="#00F0FF"
-          emissiveIntensity={0.6}
-          metalness={0.7}
-          roughness={0.2}
-          transparent
-          opacity={0.9}
-        />
-      </mesh>
-      
-      {/* Orbiting ring */}
-      <mesh position={[0, 4, 0]} rotation={[Math.PI / 4, 0, 0]}>
-        <torusGeometry args={[2.5, 0.08, 8, 32]} />
-        <meshBasicMaterial color="#00F0FF" />
-      </mesh>
-    </group>
-  );
-}
-
-// Scene with all 3D elements
-function Scene({ onZoneSelect, selectedZone }) {
-  return (
-    <>
-      {/* Lighting */}
-      <ambientLight intensity={0.3} />
-      <pointLight position={[0, 15, 0]} intensity={1.5} color="#00F0FF" />
-      <pointLight position={[-15, 8, -15]} intensity={0.6} color="#9D4EDD" />
-      <pointLight position={[15, 8, 15]} intensity={0.6} color="#00FF88" />
-      <directionalLight position={[10, 20, 10]} intensity={0.5} castShadow />
-      
-      {/* Environment */}
-      <Stars radius={100} depth={50} count={3000} factor={4} fade speed={0.5} />
-      <fog attach="fog" args={['#000011', 25, 80]} />
-      
-      {/* Ground and grid */}
-      <Ground />
-      <Grid />
-      
-      {/* Central tower */}
-      <CentralTower />
-      
-      {/* Zone buildings */}
-      {ZONES.map(zone => (
-        <ZoneBuilding 
-          key={zone.id} 
-          zone={zone} 
-          onSelect={onZoneSelect}
-          isSelected={selectedZone?.id === zone.id}
-        />
-      ))}
-    </>
-  );
-}
-
-// Loading fallback
-function LoadingScreen() {
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-black" data-testid="metaverse-loading">
-      <div className="text-center">
-        <div className="w-16 h-16 border-4 border-neon-cyan/30 border-t-neon-cyan rounded-full animate-spin mx-auto mb-4" />
-        <p className="text-neon-cyan font-mono">Loading 3D Metaverse...</p>
-        <p className="text-white/40 text-sm mt-2">Checking browser compatibility...</p>
+// Loading screen
+const LoadingScreen = ({ message }) => (
+  <div className="min-h-screen flex items-center justify-center bg-black" data-testid="cesium-loading">
+    <div className="text-center">
+      <div className="relative w-24 h-24 mx-auto mb-6">
+        <Globe className="w-24 h-24 text-neon-cyan animate-pulse" />
+        <div className="absolute inset-0 border-4 border-neon-cyan/30 border-t-neon-cyan rounded-full animate-spin" />
       </div>
+      <p className="text-neon-cyan font-mono text-lg">{message || 'Loading 3D Earth...'}</p>
+      <p className="text-white/40 text-sm mt-2">Initializing Cesium globe with OSM data</p>
     </div>
-  );
-}
+  </div>
+);
 
-// Error boundary for Canvas errors
-class CanvasErrorBoundary extends React.Component {
-  constructor(props) {
-    super(props);
-    this.state = { hasError: false, error: null };
-  }
-
-  static getDerivedStateFromError(error) {
-    return { hasError: true, error };
-  }
-
-  componentDidCatch(error, errorInfo) {
-    console.error('3D Canvas Error:', error, errorInfo);
-  }
-
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div className="absolute inset-0 flex items-center justify-center bg-black pt-16">
-          <div className="text-center p-8">
-            <AlertTriangle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-            <h2 className="text-xl font-orbitron text-red-500 mb-2">3D Rendering Error</h2>
-            <p className="text-white/60 mb-4 max-w-md">
-              An error occurred while rendering the 3D scene. This may be due to browser compatibility issues.
-            </p>
-            <p className="text-xs text-white/40 mb-4 font-mono">
-              {this.state.error?.message || 'Unknown error'}
-            </p>
-            <button
-              onClick={() => window.location.href = '/metaverse'}
-              className="px-6 py-2 bg-neon-cyan/20 border border-neon-cyan text-neon-cyan hover:bg-neon-cyan/30 transition-colors"
-            >
-              Use 2D Map Instead
-            </button>
-          </div>
-        </div>
-      );
-    }
-
-    return this.props.children;
-  }
-}
-
-// Main page component
+// Main Cesium 3D Page
 const Metaverse3DPage = () => {
   const navigate = useNavigate();
-  const [selectedZone, setSelectedZone] = useState(null);
-  const [showInfo, setShowInfo] = useState(true);
-  const [webglSupport, setWebglSupport] = useState(null);
+  const cesiumContainerRef = useRef(null);
+  const viewerRef = useRef(null);
+  
   const [isLoading, setIsLoading] = useState(true);
-  const containerRef = useRef();
+  const [loadingMessage, setLoadingMessage] = useState('Initializing...');
+  const [error, setError] = useState(null);
+  const [selectedZone, setSelectedZone] = useState(null);
+  const [showLayers, setShowLayers] = useState(false);
+  const [showInfo, setShowInfo] = useState(true);
+  const [layers, setLayers] = useState({
+    osmBuildings: true,
+    terrain: true,
+    osmImagery: true,
+  });
+  const [searchQuery, setSearchQuery] = useState('');
+  const [webglSupport, setWebglSupport] = useState(null);
 
-  // Check WebGL support on mount
+  // Check WebGL support
   useEffect(() => {
-    const checkSupport = () => {
-      const result = checkWebGLSupport();
-      setWebglSupport(result);
-      setIsLoading(false);
-    };
-    
-    // Small delay to ensure DOM is ready
-    const timer = setTimeout(checkSupport, 100);
-    return () => clearTimeout(timer);
+    const support = checkWebGLSupport();
+    setWebglSupport(support);
   }, []);
 
-  const handleZoneSelect = (zone) => {
+  // Initialize Cesium viewer
+  useEffect(() => {
+    if (!cesiumContainerRef.current || !webglSupport?.supported) return;
+
+    let viewer = null;
+    let osmBuildingsTileset = null;
+
+    const initViewer = async () => {
+      try {
+        setLoadingMessage('Creating 3D globe...');
+        
+        // Create the viewer with terrain
+        viewer = new Cesium.Viewer(cesiumContainerRef.current, {
+          terrain: Cesium.Terrain.fromWorldTerrain(),
+          animation: false,
+          baseLayerPicker: false,
+          fullscreenButton: false,
+          vrButton: false,
+          geocoder: false,
+          homeButton: false,
+          infoBox: true,
+          sceneModePicker: false,
+          selectionIndicator: true,
+          timeline: false,
+          navigationHelpButton: false,
+          creditContainer: document.createElement('div'), // Hide credits
+        });
+
+        viewerRef.current = viewer;
+
+        // Set dark background
+        viewer.scene.backgroundColor = Cesium.Color.fromCssColorString('#000011');
+        viewer.scene.globe.baseColor = Cesium.Color.fromCssColorString('#0a0a1a');
+
+        setLoadingMessage('Loading OpenStreetMap imagery...');
+        
+        // Remove default imagery and add OSM
+        viewer.imageryLayers.removeAll();
+        const osmImagery = new Cesium.OpenStreetMapImageryProvider({
+          url: 'https://tile.openstreetmap.org/'
+        });
+        viewer.imageryLayers.addImageryProvider(osmImagery);
+
+        setLoadingMessage('Loading 3D buildings...');
+        
+        // Add OSM Buildings 3D tileset
+        try {
+          osmBuildingsTileset = await Cesium.createOsmBuildingsAsync();
+          viewer.scene.primitives.add(osmBuildingsTileset);
+        } catch (e) {
+          console.warn('Could not load OSM Buildings:', e);
+        }
+
+        setLoadingMessage('Adding REALUM zones...');
+
+        // Add REALUM zone markers
+        REALUM_ZONES.forEach(zone => {
+          viewer.entities.add({
+            name: zone.name,
+            position: Cesium.Cartesian3.fromDegrees(
+              zone.coords.lon, 
+              zone.coords.lat, 
+              zone.coords.height
+            ),
+            point: {
+              pixelSize: 15,
+              color: Cesium.Color.fromCssColorString(zone.color),
+              outlineColor: Cesium.Color.WHITE,
+              outlineWidth: 2,
+              heightReference: Cesium.HeightReference.RELATIVE_TO_GROUND,
+            },
+            label: {
+              text: zone.name,
+              font: '14px Orbitron, sans-serif',
+              fillColor: Cesium.Color.fromCssColorString(zone.color),
+              outlineColor: Cesium.Color.BLACK,
+              outlineWidth: 2,
+              style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+              verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+              pixelOffset: new Cesium.Cartesian2(0, -20),
+              heightReference: Cesium.HeightReference.RELATIVE_TO_GROUND,
+            },
+            description: `
+              <div style="padding: 10px; font-family: sans-serif;">
+                <h3 style="color: ${zone.color}; margin: 0 0 10px 0;">${zone.name}</h3>
+                <p style="margin: 0 0 5px 0;"><strong>Location:</strong> ${zone.city}</p>
+                <p style="margin: 0;">${zone.description}</p>
+              </div>
+            `,
+            properties: {
+              zoneId: zone.id,
+              zonePath: zone.path,
+              zoneData: zone,
+            }
+          });
+        });
+
+        // Click handler for zones
+        viewer.screenSpaceEventHandler.setInputAction((click) => {
+          const pickedObject = viewer.scene.pick(click.position);
+          if (Cesium.defined(pickedObject) && pickedObject.id) {
+            const entity = pickedObject.id;
+            if (entity.properties && entity.properties.zoneData) {
+              setSelectedZone(entity.properties.zoneData.getValue());
+            }
+          } else {
+            setSelectedZone(null);
+          }
+        }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
+
+        // Set initial camera position (overview of Earth)
+        viewer.camera.flyTo({
+          destination: Cesium.Cartesian3.fromDegrees(10, 30, 20000000),
+          duration: 0,
+        });
+
+        setIsLoading(false);
+        setLoadingMessage('');
+
+      } catch (err) {
+        console.error('Error initializing Cesium:', err);
+        setError(err.message);
+        setIsLoading(false);
+      }
+    };
+
+    initViewer();
+
+    // Cleanup
+    return () => {
+      if (viewerRef.current && !viewerRef.current.isDestroyed()) {
+        viewerRef.current.destroy();
+        viewerRef.current = null;
+      }
+    };
+  }, [webglSupport]);
+
+  // Fly to zone
+  const flyToZone = useCallback((zone) => {
+    if (!viewerRef.current) return;
+    
     setSelectedZone(zone);
-  };
+    viewerRef.current.camera.flyTo({
+      destination: Cesium.Cartesian3.fromDegrees(
+        zone.coords.lon,
+        zone.coords.lat,
+        zone.coords.height + 2000
+      ),
+      orientation: {
+        heading: Cesium.Math.toRadians(0),
+        pitch: Cesium.Math.toRadians(-45),
+        roll: 0,
+      },
+      duration: 2,
+    });
+  }, []);
 
-  const handleEnterZone = () => {
-    if (selectedZone) {
-      navigate(selectedZone.path);
+  // Camera controls
+  const zoomIn = useCallback(() => {
+    if (!viewerRef.current) return;
+    viewerRef.current.camera.zoomIn(viewerRef.current.camera.positionCartographic.height * 0.3);
+  }, []);
+
+  const zoomOut = useCallback(() => {
+    if (!viewerRef.current) return;
+    viewerRef.current.camera.zoomOut(viewerRef.current.camera.positionCartographic.height * 0.3);
+  }, []);
+
+  const resetView = useCallback(() => {
+    if (!viewerRef.current) return;
+    viewerRef.current.camera.flyTo({
+      destination: Cesium.Cartesian3.fromDegrees(10, 30, 20000000),
+      duration: 2,
+    });
+    setSelectedZone(null);
+  }, []);
+
+  // Toggle layers
+  const toggleLayer = useCallback((layerName) => {
+    if (!viewerRef.current) return;
+
+    setLayers(prev => {
+      const newState = { ...prev, [layerName]: !prev[layerName] };
+
+      if (layerName === 'osmBuildings') {
+        viewerRef.current.scene.primitives._primitives.forEach(p => {
+          if (p.constructor.name === 'Cesium3DTileset') {
+            p.show = newState.osmBuildings;
+          }
+        });
+      } else if (layerName === 'terrain') {
+        viewerRef.current.scene.globe.show = newState.terrain;
+      } else if (layerName === 'osmImagery') {
+        if (viewerRef.current.imageryLayers.length > 0) {
+          viewerRef.current.imageryLayers.get(0).show = newState.osmImagery;
+        }
+      }
+
+      return newState;
+    });
+  }, []);
+
+  // Search handler
+  const handleSearch = useCallback(async (e) => {
+    e.preventDefault();
+    if (!searchQuery.trim() || !viewerRef.current) return;
+
+    try {
+      // Use Cesium's geocoder service
+      const resource = await Cesium.IonResource.fromAssetId(1);
+      const results = await Cesium.GeocoderService.geocode(searchQuery);
+      
+      if (results && results.length > 0) {
+        viewerRef.current.camera.flyTo({
+          destination: results[0].destination,
+          duration: 2,
+        });
+      }
+    } catch (err) {
+      // Fallback: try OpenStreetMap Nominatim
+      try {
+        const response = await fetch(
+          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}`
+        );
+        const data = await response.json();
+        
+        if (data && data.length > 0) {
+          viewerRef.current.camera.flyTo({
+            destination: Cesium.Cartesian3.fromDegrees(
+              parseFloat(data[0].lon),
+              parseFloat(data[0].lat),
+              5000
+            ),
+            duration: 2,
+          });
+        }
+      } catch (searchErr) {
+        console.error('Search failed:', searchErr);
+      }
     }
-  };
+  }, [searchQuery]);
 
-  // Show loading state
-  if (isLoading) {
-    return <LoadingScreen />;
+  // Show WebGL error if not supported
+  if (webglSupport && !webglSupport.supported) {
+    return <BrowserCompatibilityError />;
   }
 
-  // Show error if WebGL2 is not supported
-  if (!webglSupport?.supported || webglSupport?.version < 2) {
-    return <BrowserCompatibilityError webglInfo={webglSupport} />;
+  // Show loading
+  if (isLoading) {
+    return <LoadingScreen message={loadingMessage} />;
+  }
+
+  // Show error
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-black p-4">
+        <CyberCard className="max-w-lg p-8 bg-black/90 border-red-500/50">
+          <div className="text-center">
+            <AlertTriangle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+            <h1 className="font-orbitron text-xl font-bold text-red-500 mb-2">
+              Failed to Load 3D Earth
+            </h1>
+            <p className="text-white/70 mb-4">{error}</p>
+            <CyberButton onClick={() => window.location.reload()}>
+              Try Again
+            </CyberButton>
+          </div>
+        </CyberCard>
+      </div>
+    );
   }
 
   return (
-    <div 
-      ref={containerRef}
-      className="min-h-screen bg-black relative"
-      data-testid="metaverse-3d-page"
-    >
-      {/* 3D Canvas */}
-      <div className="absolute inset-0 pt-16">
-        <CanvasErrorBoundary>
-          <Suspense fallback={<LoadingScreen />}>
-            <Canvas
-              shadows
-              camera={{ position: [25, 20, 25], fov: 50 }}
-              gl={{ antialias: true, alpha: false }}
-              onCreated={({ gl }) => {
-                gl.setClearColor('#000011');
-              }}
-            >
-              <OrbitControls 
-                enablePan={true}
-                enableZoom={true}
-                enableRotate={true}
-                minDistance={15}
-                maxDistance={60}
-                maxPolarAngle={Math.PI / 2.1}
-                target={[0, 0, 0]}
-              />
-              <Scene 
-                onZoneSelect={handleZoneSelect} 
-                selectedZone={selectedZone}
-              />
-            </Canvas>
-          </Suspense>
-        </CanvasErrorBoundary>
-      </div>
+    <div className="min-h-screen bg-black relative" data-testid="metaverse-3d-cesium-page">
+      {/* Cesium Container */}
+      <div 
+        ref={cesiumContainerRef} 
+        className="absolute inset-0 pt-16"
+        style={{ background: '#000011' }}
+      />
 
       {/* UI Overlay */}
       <div className="absolute inset-0 pointer-events-none pt-16">
         {/* Top controls */}
         <div className="absolute top-20 left-4 right-4 flex justify-between items-start pointer-events-auto">
-          <div className="flex gap-2">
+          {/* Left controls */}
+          <div className="flex flex-col gap-2">
             <button
               onClick={() => navigate('/metaverse')}
               className="p-2 bg-black/80 border border-white/30 hover:border-neon-cyan transition-colors"
               title="2D Map"
             >
-              <Home className="w-5 h-5" />
+              <Home className="w-5 h-5 text-white" />
+            </button>
+            <button
+              onClick={() => setShowLayers(!showLayers)}
+              className={`p-2 bg-black/80 border transition-colors ${showLayers ? 'border-neon-cyan' : 'border-white/30 hover:border-neon-cyan'}`}
+              title="Layers"
+            >
+              <Layers className="w-5 h-5 text-white" />
             </button>
           </div>
 
+          {/* Search bar */}
+          <form onSubmit={handleSearch} className="flex-1 max-w-md mx-4">
+            <div className="relative">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search location..."
+                className="w-full px-4 py-2 pl-10 bg-black/80 border border-white/30 focus:border-neon-cyan text-white placeholder-white/40 outline-none transition-colors"
+              />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/50" />
+            </div>
+          </form>
+
+          {/* Right controls */}
+          <div className="flex flex-col gap-2">
+            <button
+              onClick={() => setShowInfo(!showInfo)}
+              className={`p-2 bg-black/80 border transition-colors ${showInfo ? 'border-neon-cyan' : 'border-white/30 hover:border-neon-cyan'}`}
+            >
+              <Info className="w-5 h-5 text-white" />
+            </button>
+          </div>
+        </div>
+
+        {/* Zoom controls */}
+        <div className="absolute right-4 top-1/2 -translate-y-1/2 flex flex-col gap-2 pointer-events-auto">
           <button
-            onClick={() => setShowInfo(!showInfo)}
+            onClick={zoomIn}
             className="p-2 bg-black/80 border border-white/30 hover:border-neon-cyan transition-colors"
+            title="Zoom In"
           >
-            <Info className="w-5 h-5" />
+            <ZoomIn className="w-5 h-5 text-white" />
+          </button>
+          <button
+            onClick={zoomOut}
+            className="p-2 bg-black/80 border border-white/30 hover:border-neon-cyan transition-colors"
+            title="Zoom Out"
+          >
+            <ZoomOut className="w-5 h-5 text-white" />
+          </button>
+          <button
+            onClick={resetView}
+            className="p-2 bg-black/80 border border-white/30 hover:border-neon-cyan transition-colors"
+            title="Reset View"
+          >
+            <RotateCcw className="w-5 h-5 text-white" />
           </button>
         </div>
+
+        {/* Layers panel */}
+        <AnimatePresence>
+          {showLayers && (
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              className="absolute top-36 left-4 w-64 pointer-events-auto"
+            >
+              <CyberCard className="p-4 bg-black/95">
+                <h3 className="font-orbitron font-bold text-neon-cyan mb-3 flex items-center gap-2">
+                  <Layers className="w-4 h-4" />
+                  MAP LAYERS
+                </h3>
+                <div className="space-y-2">
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={layers.osmImagery}
+                      onChange={() => toggleLayer('osmImagery')}
+                      className="w-4 h-4 accent-neon-cyan"
+                    />
+                    <Globe className="w-4 h-4 text-white/60" />
+                    <span className="text-sm text-white/80">OpenStreetMap</span>
+                  </label>
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={layers.osmBuildings}
+                      onChange={() => toggleLayer('osmBuildings')}
+                      className="w-4 h-4 accent-neon-cyan"
+                    />
+                    <Building2 className="w-4 h-4 text-white/60" />
+                    <span className="text-sm text-white/80">3D Buildings</span>
+                  </label>
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={layers.terrain}
+                      onChange={() => toggleLayer('terrain')}
+                      className="w-4 h-4 accent-neon-cyan"
+                    />
+                    <Mountain className="w-4 h-4 text-white/60" />
+                    <span className="text-sm text-white/80">3D Terrain</span>
+                  </label>
+                </div>
+              </CyberCard>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Info panel */}
         <AnimatePresence>
@@ -474,22 +560,65 @@ const Metaverse3DPage = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 20 }}
-              className="absolute top-32 right-4 w-64 pointer-events-auto"
+              className="absolute top-36 right-4 w-72 pointer-events-auto"
             >
               <CyberCard className="p-4 bg-black/95">
-                <h3 className="font-orbitron font-bold text-neon-cyan mb-2">REALUM 3D</h3>
+                <h3 className="font-orbitron font-bold text-neon-cyan mb-2">REALUM 3D EARTH</h3>
                 <p className="text-xs text-white/60 mb-3">
-                  Explore the metaverse in 3D. Click on buildings to select zones.
+                  Explore the world with real OpenStreetMap data and 3D buildings.
+                  REALUM zones are marked at key global locations.
                 </p>
                 <div className="text-xs text-white/40 space-y-1">
-                  <p>• Drag to rotate view</p>
+                  <p>• Drag to rotate globe</p>
                   <p>• Scroll to zoom</p>
-                  <p>• Click buildings to select</p>
+                  <p>• Click markers for zones</p>
+                  <p>• Search any location</p>
                 </div>
               </CyberCard>
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* Zone list */}
+        <motion.div
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          className="absolute bottom-24 lg:bottom-8 left-4 hidden lg:block pointer-events-auto"
+        >
+          <CyberCard className="p-3 bg-black/95">
+            <h4 className="text-xs font-mono text-white/50 mb-2 flex items-center gap-2">
+              <MapPin className="w-3 h-3" />
+              REALUM ZONES
+            </h4>
+            <div className="space-y-1 max-h-64 overflow-y-auto">
+              {REALUM_ZONES.map(zone => (
+                <button
+                  key={zone.id}
+                  onClick={() => flyToZone(zone)}
+                  className={`w-full flex items-center gap-2 px-2 py-1.5 text-xs transition-colors rounded ${
+                    selectedZone?.id === zone.id ? 'bg-white/10' : 'hover:bg-white/5'
+                  }`}
+                >
+                  <div 
+                    className="w-2 h-2 rounded-full flex-shrink-0"
+                    style={{ backgroundColor: zone.color }}
+                  />
+                  <div className="text-left flex-1 min-w-0">
+                    <span 
+                      className="block truncate"
+                      style={{ color: selectedZone?.id === zone.id ? zone.color : 'white' }}
+                    >
+                      {zone.name}
+                    </span>
+                    <span className="block text-white/40 truncate text-[10px]">
+                      {zone.city}
+                    </span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </CyberCard>
+        </motion.div>
 
         {/* Selected zone panel */}
         <AnimatePresence>
@@ -498,25 +627,38 @@ const Metaverse3DPage = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 20 }}
-              className="absolute bottom-24 lg:bottom-8 left-4 right-4 lg:left-auto lg:right-4 lg:w-80 pointer-events-auto"
+              className="absolute bottom-24 lg:bottom-8 right-4 lg:w-80 pointer-events-auto"
             >
-              <CyberCard className="p-4 bg-black/95" style={{ borderColor: selectedZone.color }}>
+              <CyberCard 
+                className="p-4 bg-black/95" 
+                style={{ borderColor: selectedZone.color }}
+              >
+                <button
+                  onClick={() => setSelectedZone(null)}
+                  className="absolute top-2 right-2 p-1 hover:bg-white/10 rounded transition-colors"
+                >
+                  <X className="w-4 h-4 text-white/60" />
+                </button>
+                
                 <div className="flex items-center gap-3 mb-3">
                   <div 
-                    className="w-12 h-12 flex items-center justify-center border"
+                    className="w-12 h-12 flex items-center justify-center border rounded"
                     style={{ borderColor: selectedZone.color, backgroundColor: `${selectedZone.color}20` }}
                   >
-                    <selectedZone.icon className="w-6 h-6" style={{ color: selectedZone.color }} />
+                    <MapPin className="w-6 h-6" style={{ color: selectedZone.color }} />
                   </div>
                   <div>
                     <h3 className="font-orbitron font-bold" style={{ color: selectedZone.color }}>
                       {selectedZone.name}
                     </h3>
-                    <p className="text-xs text-white/60">{selectedZone.description}</p>
+                    <p className="text-xs text-white/60">{selectedZone.city}</p>
                   </div>
                 </div>
+                
+                <p className="text-sm text-white/70 mb-4">{selectedZone.description}</p>
+                
                 <CyberButton 
-                  onClick={handleEnterZone}
+                  onClick={() => navigate(selectedZone.path)}
                   className="w-full"
                 >
                   Enter Zone
@@ -525,36 +667,6 @@ const Metaverse3DPage = () => {
             </motion.div>
           )}
         </AnimatePresence>
-
-        {/* Zone legend */}
-        <motion.div
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          className="absolute bottom-24 lg:bottom-8 left-4 hidden lg:block pointer-events-auto"
-        >
-          <CyberCard className="p-3 bg-black/95">
-            <h4 className="text-xs font-mono text-white/50 mb-2">ZONES</h4>
-            <div className="space-y-1">
-              {ZONES.map(zone => (
-                <button
-                  key={zone.id}
-                  onClick={() => setSelectedZone(zone)}
-                  className={`w-full flex items-center gap-2 px-2 py-1 text-xs transition-colors ${
-                    selectedZone?.id === zone.id ? 'bg-white/10' : 'hover:bg-white/5'
-                  }`}
-                >
-                  <div 
-                    className="w-2 h-2 rounded-full"
-                    style={{ backgroundColor: zone.color }}
-                  />
-                  <span style={{ color: selectedZone?.id === zone.id ? zone.color : 'white' }}>
-                    {zone.name}
-                  </span>
-                </button>
-              ))}
-            </div>
-          </CyberCard>
-        </motion.div>
       </div>
     </div>
   );
