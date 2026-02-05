@@ -254,6 +254,22 @@ function App() {
                 </ProtectedRoute>
               } />
               
+              <Route path="/purchase-rlm" element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <PurchaseRLMPage />
+                  </AppLayout>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/family" element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <FamilyPage />
+                  </AppLayout>
+                </ProtectedRoute>
+              } />
+              
               {/* Catch all - redirect to dashboard */}
               <Route path="*" element={<Navigate to="/dashboard" replace />} />
             </Routes>
