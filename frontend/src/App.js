@@ -3,7 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'sonner';
 
 // Initialize API interceptors early (must be before any API calls)
-import '../utils/api';
+import './utils/api';
 
 // Context Providers
 import { AuthProvider } from './context/AuthContext';
