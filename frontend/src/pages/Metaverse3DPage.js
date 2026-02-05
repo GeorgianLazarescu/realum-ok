@@ -240,9 +240,38 @@ const Metaverse3DPage = () => {
     });
   }, []);
 
+  // NPC locations mapped to real coordinates
+  const getNPCLocation = (npc) => {
+    const locationMap = {
+      'Learning Zone': { lon: -1.2577, lat: 51.7520, height: 800 }, // Oxford
+      'Marketplace': { lon: 55.2708, lat: 25.2048, height: 800 }, // Dubai
+      'Social Plaza': { lon: 139.6917, lat: 35.6895, height: 800 }, // Tokyo
+      'Wellness Center': { lon: 103.8198, lat: 1.3521, height: 800 }, // Singapore
+      'Treasury': { lon: 103.8198, lat: 1.3521, height: 1200 }, // Singapore (higher)
+      'Jobs Hub': { lon: -122.4194, lat: 37.7749, height: 800 }, // San Francisco
+    };
+    return locationMap[npc.location] || { lon: 0, lat: 0, height: 800 };
+  };
+
+  // Fly to NPC
+  const flyToNPC = useCallback((npc) => {
+    const loc = getNPCLocation(npc);
+    setSelectedNPC(npc);
+    setFlyToDestination({
+      destination: Cartesian3.fromDegrees(loc.lon, loc.lat, loc.height + 5000),
+      orientation: {
+        heading: CesiumMath.toRadians(0),
+        pitch: CesiumMath.toRadians(-45),
+        roll: 0,
+      },
+      duration: 2,
+    });
+  }, []);
+
   // Reset view
   const resetView = useCallback(() => {
     setSelectedZone(null);
+    setSelectedNPC(null);
     setFlyToDestination({
       destination: Cartesian3.fromDegrees(10, 20, 25000000),
       duration: 2,
