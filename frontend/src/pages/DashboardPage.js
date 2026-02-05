@@ -35,7 +35,7 @@ const DashboardPage = () => {
     { label: t('jobs'), icon: Briefcase, path: '/jobs', color: '#FF003C' },
     { label: t('courses'), icon: GraduationCap, path: '/courses', color: '#9D4EDD' },
     { label: t('marketplace'), icon: ShoppingBag, path: '/marketplace', color: '#FF6B35' },
-    { label: t('metaverse'), icon: Layers, path: '/metaverse', color: '#00F0FF' },
+    { label: t('metaverse'), icon: Layers, path: '/metaverse/3d', color: '#00F0FF' },
     { label: t('voting'), icon: Vote, path: '/voting', color: '#40C4FF' },
     { label: 'Referral', icon: Users, path: '/referral', color: '#00FF88' }
   ];
