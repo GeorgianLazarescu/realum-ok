@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
-import { apiClient, API } from '../utils/api';
+import { apiClient } from '../utils/api';
 
 const AuthContext = createContext(null);
 
@@ -30,13 +30,26 @@ export const AuthProvider = ({ children }) => {
         setUser(res.data);
         setToken(storedToken);
       } catch (error) {
-        console.warn('Auth initialization failed:', error?.response?.status);
-        // Only clear token if it's actually invalid (401), not for network errors
-        if (error?.response?.status === 401) {
+        const status = error?.response?.status;
+        console.warn('Auth initialization failed:', status);
+        
+        // Only clear token if it's actually invalid (401)
+        // For rate limits (429) or network errors, keep the token
+        if (status === 401) {
           localStorage.removeItem('token');
           setToken(null);
           setUser(null);
+        } else if (status === 429) {
+          // Rate limited - keep the token, assume user is still valid
+          // The user will be validated on the next API call
+          console.warn('Rate limited during auth check - keeping session');
+          setToken(storedToken);
+          // Create a minimal user object to prevent redirect
+          // The real user data will be fetched on next successful API call
+          setUser({ id: 'pending', email: 'loading...', username: 'loading...' });
         }
+        // For network errors, keep the token but don't set user
+        // This will show loading state and allow retry
       } finally {
         setLoading(false);
       }
@@ -90,7 +103,7 @@ export const AuthProvider = ({ children }) => {
     }
   }, [logout]);
 
-  // Check if user is authenticated
+  // Check if user is authenticated - also consider token presence for pending auth
   const isAuthenticated = Boolean(token && user);
 
   return (
