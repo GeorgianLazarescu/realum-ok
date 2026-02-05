@@ -622,3 +622,131 @@ async def get_active_npcs():
         npc["available"] = random.random() > 0.3
     
     return {"npcs": npcs}
+
+
+# ============== SEASONAL EVENTS CALENDAR ==============
+
+SEASONAL_EVENTS = [
+    # January
+    {"month": 1, "day": 1, "name": "New Year's Celebration", "type": "festival", "duration_days": 3, "bonus_rlm": 100, "description": "Ring in the New Year with special rewards and activities!"},
+    {"month": 1, "day": 15, "name": "Knowledge Week", "type": "learning", "duration_days": 7, "bonus_xp": 2.0, "description": "Double XP for all learning activities!"},
+    
+    # February
+    {"month": 2, "day": 14, "name": "Valentine's Festival", "type": "social", "duration_days": 3, "bonus_rlm": 50, "description": "Celebrate connections and friendship in the metaverse!"},
+    {"month": 2, "day": 22, "name": "Economic Summit", "type": "economy", "duration_days": 5, "bonus_rlm": 75, "description": "Special trading opportunities and marketplace discounts!"},
+    
+    # March
+    {"month": 3, "day": 1, "name": "Spring Awakening", "type": "renewal", "duration_days": 7, "bonus_xp": 1.5, "description": "Rebirth and new beginnings - perfect time to start new projects!"},
+    {"month": 3, "day": 20, "name": "Equinox Festival", "type": "festival", "duration_days": 3, "bonus_rlm": 60, "description": "Celebrate balance with day and night activities!"},
+    
+    # April
+    {"month": 4, "day": 1, "name": "Fool's Fortune", "type": "chaos", "duration_days": 1, "random_events": True, "description": "Expect the unexpected! Random events everywhere!"},
+    {"month": 4, "day": 22, "name": "Earth Day", "type": "ecological", "duration_days": 3, "bonus_rlm": 40, "description": "Environmental awareness activities and green rewards!"},
+    
+    # May
+    {"month": 5, "day": 1, "name": "Worker's Celebration", "type": "jobs", "duration_days": 5, "bonus_rlm": 80, "description": "Extra rewards for job completions!"},
+    {"month": 5, "day": 15, "name": "Innovation Week", "type": "tech", "duration_days": 7, "bonus_xp": 1.5, "description": "Tech challenges and programming rewards!"},
+    
+    # June
+    {"month": 6, "day": 1, "name": "Summer Kickoff", "type": "festival", "duration_days": 7, "bonus_rlm": 100, "description": "Summer festivities begin with beach zones and parties!"},
+    {"month": 6, "day": 21, "name": "Solstice Celebration", "type": "festival", "duration_days": 3, "bonus_rlm": 75, "description": "Longest day celebrations with special quests!"},
+    
+    # July
+    {"month": 7, "day": 4, "name": "Freedom Festival", "type": "festival", "duration_days": 5, "bonus_rlm": 60, "description": "Celebrate independence and freedom!"},
+    {"month": 7, "day": 20, "name": "Space Week", "type": "exploration", "duration_days": 7, "bonus_xp": 1.5, "description": "Explore virtual space zones and unlock cosmic rewards!"},
+    
+    # August
+    {"month": 8, "day": 10, "name": "Art Festival", "type": "creative", "duration_days": 10, "bonus_rlm": 90, "description": "Showcase your creativity! Art contests and NFT events!"},
+    {"month": 8, "day": 25, "name": "Gaming Championship", "type": "competition", "duration_days": 5, "bonus_rlm": 150, "description": "Compete for glory and prizes!"},
+    
+    # September
+    {"month": 9, "day": 1, "name": "Back to Learning", "type": "learning", "duration_days": 14, "bonus_xp": 2.0, "description": "Education month with course discounts and bonus XP!"},
+    {"month": 9, "day": 22, "name": "Harvest Festival", "type": "festival", "duration_days": 5, "bonus_rlm": 80, "description": "Celebrate the season of abundance!"},
+    
+    # October
+    {"month": 10, "day": 1, "name": "Cyberpunk Month", "type": "theme", "duration_days": 31, "bonus_rlm": 50, "description": "Special cyberpunk aesthetics and themed quests!"},
+    {"month": 10, "day": 31, "name": "Halloween Spooktacular", "type": "festival", "duration_days": 3, "bonus_rlm": 100, "description": "Spooky activities, costume contests, and haunted zones!"},
+    
+    # November
+    {"month": 11, "day": 1, "name": "Gratitude Month", "type": "social", "duration_days": 30, "bonus_xp": 1.25, "description": "Connect with friends and mentors for bonus rewards!"},
+    {"month": 11, "day": 25, "name": "Black Friday Bonanza", "type": "economy", "duration_days": 4, "bonus_rlm": 200, "description": "Massive marketplace discounts and deals!"},
+    
+    # December
+    {"month": 12, "day": 1, "name": "Winter Wonderland", "type": "festival", "duration_days": 31, "bonus_rlm": 75, "description": "Snow zones, ice skating, and holiday cheer!"},
+    {"month": 12, "day": 21, "name": "Solstice Night", "type": "festival", "duration_days": 1, "bonus_rlm": 50, "description": "Longest night celebration with stargazing events!"},
+    {"month": 12, "day": 25, "name": "Gift Exchange", "type": "social", "duration_days": 5, "bonus_rlm": 150, "description": "Exchange gifts with friends and earn bonus rewards!"},
+    {"month": 12, "day": 31, "name": "Year End Gala", "type": "festival", "duration_days": 1, "bonus_rlm": 200, "description": "Grand finale celebration with fireworks and rewards!"},
+]
+
+
+@router.get("/calendar")
+async def get_seasonal_calendar(month: Optional[int] = None):
+    """Get seasonal events calendar"""
+    
+    now = datetime.now(timezone.utc)
+    current_month = month or now.month
+    current_day = now.day
+    
+    # Get events for specified month
+    month_events = [e for e in SEASONAL_EVENTS if e["month"] == current_month]
+    
+    # Determine active events
+    active_events = []
+    upcoming_events = []
+    
+    for event in SEASONAL_EVENTS:
+        event_start = datetime(now.year, event["month"], event["day"], tzinfo=timezone.utc)
+        event_end = event_start + timedelta(days=event.get("duration_days", 1))
+        
+        event_info = {
+            "name": event["name"],
+            "type": event["type"],
+            "description": event["description"],
+            "start_date": event_start.isoformat(),
+            "end_date": event_end.isoformat(),
+            "duration_days": event.get("duration_days", 1),
+            "bonus_rlm": event.get("bonus_rlm", 0),
+            "bonus_xp": event.get("bonus_xp", 1.0),
+        }
+        
+        if event_start <= now <= event_end:
+            event_info["status"] = "active"
+            event_info["days_remaining"] = (event_end - now).days
+            active_events.append(event_info)
+        elif event_start > now and (event_start - now).days <= 30:
+            event_info["status"] = "upcoming"
+            event_info["days_until"] = (event_start - now).days
+            upcoming_events.append(event_info)
+    
+    return {
+        "current_month": current_month,
+        "month_events": month_events,
+        "active_events": active_events,
+        "upcoming_events": upcoming_events[:5],  # Next 5 upcoming
+        "total_events_this_year": len(SEASONAL_EVENTS)
+    }
+
+
+@router.get("/calendar/active")
+async def get_active_seasonal_events():
+    """Get currently active seasonal events"""
+    
+    now = datetime.now(timezone.utc)
+    active = []
+    
+    for event in SEASONAL_EVENTS:
+        event_start = datetime(now.year, event["month"], event["day"], tzinfo=timezone.utc)
+        event_end = event_start + timedelta(days=event.get("duration_days", 1))
+        
+        if event_start <= now <= event_end:
+            active.append({
+                "name": event["name"],
+                "type": event["type"],
+                "description": event["description"],
+                "bonus_rlm": event.get("bonus_rlm", 0),
+                "bonus_xp": event.get("bonus_xp", 1.0),
+                "ends_at": event_end.isoformat(),
+                "days_remaining": (event_end - now).days
+            })
+    
+    return {"active_events": active}
