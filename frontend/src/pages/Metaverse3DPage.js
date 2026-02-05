@@ -234,20 +234,21 @@ const Metaverse3DPage = () => {
         console.log('Adding zone markers...');
 
         // Add REALUM zone markers
-        REALUM_ZONES.forEach(zone => {
-          viewer.entities.add({
-            name: zone.name,
-            position: Cartesian3.fromDegrees(
-              zone.coords.lon, 
-              zone.coords.lat, 
-              zone.coords.height
-            ),
-            point: {
-              pixelSize: 20,
-              color: Color.fromCssColorString(zone.color),
-              outlineColor: Color.WHITE,
-              outlineWidth: 3,
-              heightReference: HeightReference.RELATIVE_TO_GROUND,
+        if (viewer && viewer.entities) {
+          REALUM_ZONES.forEach(zone => {
+            viewer.entities.add({
+              name: zone.name,
+              position: Cartesian3.fromDegrees(
+                zone.coords.lon, 
+                zone.coords.lat, 
+                zone.coords.height
+              ),
+              point: {
+                pixelSize: 20,
+                color: Color.fromCssColorString(zone.color),
+                outlineColor: Color.WHITE,
+                outlineWidth: 3,
+                heightReference: HeightReference.RELATIVE_TO_GROUND,
             },
             label: {
               text: zone.name,
