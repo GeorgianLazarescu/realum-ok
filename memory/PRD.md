@@ -34,213 +34,123 @@ Build a comprehensive educational and economic metaverse called REALUM, where us
 - **Cesium 3D Globe** - Real 3D Earth visualization using CesiumJS
 - **OpenStreetMap Integration** - Real-world map imagery from OSM
 - **3D Buildings** - OSM Buildings 3D tileset from Cesium Ion
-- **REALUM Zone Markers** - 6 global zones mapped to real cities:
-  - Learning Zone (Oxford, UK)
-  - Jobs Hub (San Francisco, USA)
-  - DAO Hall (Zug, Switzerland)
-  - Marketplace (Dubai, UAE)
-  - Social Plaza (Tokyo, Japan)
-  - Treasury (Singapore)
+- **REALUM Zone Markers** - 6 global zones mapped to real cities
 - **Location Search** - Search any location via OpenStreetMap Nominatim
 - **Interactive Navigation** - Click zones to fly to locations, enter zones
 - **Browser Compatibility** - WebGL detection with graceful fallback
 
 ### ✅ P4 Feature - Life Simulation System (COMPLETED - Feb 5, 2026)
 Complete avatar life simulation with 7 major categories:
+- Identity & Personal Development
+- Health & Biology
+- Relationships & Social Life
+- Emotions & Psychology
+- Ethics & Morality
+- Status Social & Careers
+- Spirituality & Meaning
 
-**1. Identity & Personal Development**
-- Display name vs real name (alias option)
-- Avatar age (18-100, simulated progression)
-- Biological sex selection
-- Gender identity (including non-binary options)
-- Custom pronouns
-- Biography/profile
+### ✅ P5 Backlog Features (COMPLETED - Feb 5, 2026)
 
-**2. Health & Biology**
-- Energy level tracking (0-100%)
-- Stress level monitoring
-- Task capacity based on health
-- Vulnerability mechanics (limited tasks when stressed)
-- Avatar reset (symbolic death/rebirth)
-- Rest mechanics for recovery
+**1. Authentication Persistence Fix**
+- Fixed critical bug where users were logged out on page refresh/navigation
+- Implemented axios request interceptors for automatic token attachment
+- Token is now read from localStorage on every request
+- Rate limit increased for `/api/auth/me` to 60 req/min
 
-**3. Relationships & Social Life**
-- Marriage/Partnership contracts
-- Family groups (virtual families)
-- Friendship with trust system
-- Mentorship relationships
-- Business partnerships
-- Dissolution/Divorce with effects
+**2. NPC AI Conversations**
+- AI-powered free-form chat with 6 NPCs using Emergent LLM key + OpenAI GPT-4o
+- Each NPC has unique personality, role, and expertise
+- Multi-turn conversation support with session management
+- NPCs: Aria (Mentor), Max (Trader), Luna (Guide), Sage (Healer), Vault (Banker), Alex (Recruiter)
+- Endpoint: `POST /api/npc/ai-chat`
 
-**4. Emotions & Psychology**
-- Emotional state logging (happy, sad, excited, stressed, calm, motivated)
-- Intensity tracking (0-100%)
-- Emotional journal with notes
-- Emotion history tracking
-- Stress/burnout warnings
+**3. Seasonal Events Calendar**
+- 26+ seasonal events throughout the year
+- Event types: festivals, learning, social, economy, tech, creative, competition
+- Active and upcoming events tracking
+- Bonus RLM and XP modifiers per event
+- Endpoints: `GET /api/events/calendar`, `GET /api/events/calendar/active`
 
-**5. Ethics & Morality**
-- Moral reputation score
-- Good vs bad action tracking
-- Reputation levels (Exemplary → Untrusted)
-- Social impact of actions
-- Responsibility scoring
+**4. Marketplace & Inventory System**
+- Full marketplace purchase flow with 2% token burn
+- User inventory tracking for purchased items
+- Category-based organization
+- Purchase history and item details
+- Endpoints: `GET /api/inventory`, `GET /api/inventory/{id}`
 
-**6. Status Social & Careers**
-- Career fields (Education, Healthcare, Tech, Arts, Business, etc.)
-- Job titles and experience
-- Career change with learning requirements
-- Volunteer positions (prestige without payment)
-- Career history tracking
-
-**7. Spirituality & Meaning**
-- Reflection journal entries
-- Meditation spaces (Zen Garden, Starlight, Forest, Temple)
-- Symbolic death/reset mechanics
-- Private journaling option
-
-### 🔧 Bug Fixes Applied (Feb 4-5, 2026)
-1. **ObjectId Serialization** - Fixed MongoDB `_id` removal in API responses
-2. **Public Endpoint Authentication** - Fixed route conflicts for `/faq`, `/announcements`, `/categories`
-3. **Router Prefixes** - Added `/api` prefix to search, moderation, social, achievements routers
-4. **3D Metaverse WebGL** - Added browser compatibility check and fallback for unsupported browsers
+## Bug Fixes Applied (Feb 5, 2026)
+1. **Authentication Persistence** - Fixed axios interceptor race condition
+2. **Rate Limiting Adjustment** - Increased `/api/auth/me` limit to prevent login issues
+3. **ObjectId Serialization** - Proper `_id` removal in API responses
 
 ## API Architecture
 
 ### Backend Structure
 ```
 backend/
-├── server.py              # FastAPI app with 140+ endpoints
-├── core/
-│   ├── auth.py           # JWT + 2FA + GDPR
-│   ├── database.py       # MongoDB async
-│   ├── rate_limiter.py   # DDoS protection
-│   ├── backup.py         # Automated backups
-│   ├── logging.py        # Centralized logging
-│   └── utils.py          # ObjectId serialization
+├── server.py              # FastAPI app with 380+ endpoints
 ├── routers/
 │   ├── auth.py, wallet.py, jobs.py, courses.py
 │   ├── dao.py, projects.py, simulation.py
 │   ├── chat.py, content.py, notifications.py
-│   ├── security.py, monitoring.py, analytics.py
-│   ├── bounties.py, disputes.py, reputation.py
-│   ├── search.py, moderation.py, social.py
-│   ├── achievements.py, subdaos.py
-│   └── seo.py (NEW - SEO & Marketing)
-└── services/
-    ├── token_service.py
-    └── notification_service.py
+│   ├── npc.py (NEW - AI Chat)
+│   ├── events.py (UPDATED - Seasonal Calendar)
+│   └── ... 30+ router files
+└── core/
+    ├── rate_limiter.py, auth.py, database.py
+    └── logging.py, backup.py
 ```
 
-### Key API Endpoints (All prefixed with /api)
+### Key API Endpoints
 
-### Authentication
-- `POST /auth/register` - Register with role
-- `POST /auth/login` - Login
-- `GET /auth/me` - Current user
-- `PUT /auth/profile` - Update profile
+**Authentication**
+- `POST /api/auth/login` - Login
+- `GET /api/auth/me` - Current user (rate limit: 60/min)
 
-### Wallet & Tokens
-- `GET /wallet` - Get wallet
-- `POST /wallet/transfer` - Transfer (2% burn)
-- `POST /wallet/connect` - MetaMask connect
-- `GET /token/stats` - Economy stats
-- `GET /token/burns` - Burn history
+**NPC System**
+- `GET /api/npc/list` - List all NPCs
+- `POST /api/npc/ai-chat` - AI conversation with NPC
+- `GET /api/npc/ai-chat/history/{npc_id}` - Chat history
 
-### Jobs & Marketplace
-- `GET /jobs` - List jobs
-- `POST /jobs/{id}/apply` - Apply
-- `POST /jobs/{id}/complete` - Complete
-- `GET /jobs/active` - Active jobs
-- `GET /marketplace` - List items
-- `POST /marketplace` - Create item
-- `POST /marketplace/{id}/purchase` - Buy
+**Events System**
+- `GET /api/events/calendar` - Full seasonal calendar
+- `GET /api/events/calendar/active` - Currently active events
+- `GET /api/events/objectives` - User objectives
+- `GET /api/events/tasks` - Mini-tasks
 
-### Learning
-- `GET /courses` - List courses
-- `POST /courses/{id}/enroll` - Enroll
-- `POST /courses/{id}/lesson/{lid}/complete` - Complete
-
-### DAO & Governance
-- `GET /proposals` - List proposals
-- `POST /proposals` - Create
-- `POST /proposals/{id}/vote` - Vote
-- `GET /city/zones` - List zones
-
-### Projects
-- `GET /projects` - List
-- `POST /projects` - Create
-- `POST /projects/{id}/join` - Join
-- `POST /projects/{id}/task` - Add task
-- `POST /projects/{id}/task/{tid}/complete` - Complete
-
-### Simulation
-- `POST /simulation/setup` - Initialize
-- `POST /simulation/step/{n}` - Run step
-- `GET /simulation/status` - Status
-
-### Daily Rewards
-- `GET /daily/status` - Get daily reward status
-- `POST /daily/claim` - Claim daily reward
-- `GET /daily/leaderboard` - Streak leaderboard
-
-### Referral System
-- `GET /referral/code` - Get/generate referral code
-- `GET /referral/stats` - Get referral statistics
-- `POST /referral/apply` - Apply a referral code
-- `POST /referral/check-completion` - Check referral completion
-- `GET /referral/leaderboard` - Top referrers
-
-### Admin
-- `POST /seed` - Seed database
-- `GET /health` - Health check
-- `GET /stats` - Platform stats
-- `GET /badges` - Badge definitions
-- `GET /leaderboard` - Rankings
-
-## Test Credentials
-- Test user: `test123@realum.io` / `Test12345!`
-- Simulation users: `andreea@realum.io`, `vlad@realum.io`, `sorin@realum.io` (password: `{Username}123!`)
+**Marketplace**
+- `GET /api/marketplace` - List items
+- `POST /api/marketplace/{id}/purchase` - Buy item
+- `GET /api/inventory` - User's purchased items
 
 ## Tech Stack
-- **Frontend**: React 18, Tailwind CSS, Framer Motion
+- **Frontend**: React 18, Tailwind CSS, Framer Motion, CesiumJS, Resium
 - **Backend**: FastAPI, Motor (MongoDB async)
 - **Database**: MongoDB
-- **Auth**: JWT
-- **i18n**: Custom implementation
+- **Auth**: JWT with axios interceptors
+- **AI**: Emergent LLM key + OpenAI GPT-4o
 
-## Test Results
-- Backend: 100% pass rate
+## Test Credentials
+- Test user: `lazarescugeorgian@yahoo.com` / `Lazarescu4.`
+
+## Test Results (Feb 5, 2026)
+- Backend: 87.5% pass rate (21/24 tests)
 - Frontend: 100% functional
-- Responsive: Mobile + Desktop verified
+- Auth Persistence: FIXED ✅
+- All new features: WORKING ✅
 
-## Remaining Work
+## Remaining/Future Work
 
-### ✅ P4 - Advanced Features (100% COMPLETE)
-- [x] 3D Metaverse (Three.js) - `/metaverse/3d`
-- [x] AI Recommendations - `/api/recommendations/*`
-- [x] DeFi Staking - `/api/defi/staking/*`
-- [x] Video Streaming - `/api/video/*` + VideoPlayer component
-- [x] NFT Marketplace - `/api/nft/*` (mint, list, buy, transfer)
-- [x] Mobile Support - `/api/mobile/*` + PWA (installable app)
+### Upcoming Tasks
+- Day/Night cycle visualization on Cesium globe
+- NPC visualization on 3D globe
+- Dashboard widgets functional (Objectives, Mini-Tasks connected to backend)
+- User feedback (toast notifications, animations)
 
-## Final Statistics
-- **35 Router Files**
-- **373 API Endpoints**
-- **P1-P4: 100% Complete**
+### Future Tasks (P6)
+- PWA vs Native mobile decision
+- Full regression testing
+- Performance optimization
 
 ## Last Updated
-February 4, 2026 - **ALL FEATURES COMPLETE!** Mobile APIs + PWA added for installable mobile experience.
-
-### P3 Implementation Summary
-
-| Module | Backend | Frontend | Status |
-|--------|---------|----------|--------|
-| Search & Discovery | `search.py` | `SearchPage.js` | ✅ Complete |
-| Content Moderation | `moderation.py` | Admin panel | ✅ Complete |
-| Social Features | `social.py` | `SocialPage.js` | ✅ Complete |
-| Achievements | `achievements.py` | `AchievementsPage.js` | ✅ Complete |
-| Simulation | `simulation.py` | `SimulationPage.js` | ✅ Complete |
-| SEO & Marketing | `seo.py` | N/A (API only) | ✅ Complete |
-| Notifications | `notifications.py` | `NotificationsPage.js` | ✅ Complete |
-| WebSocket Chat | `chat.py` | `ChatPage.js` | ✅ Complete |
+February 5, 2026 - Authentication bug fixed, backlog features (NPC AI, Seasonal Events, Inventory) implemented and tested.
