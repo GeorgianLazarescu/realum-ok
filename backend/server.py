@@ -173,8 +173,11 @@ async def rate_limit_middleware(request: Request, call_next):
             return await call_next(request)
         
         # Determine rate limit based on endpoint
-        if request.url.path.startswith("/api/auth"):
-            # Stricter limits for auth endpoints
+        if request.url.path == "/api/auth/me":
+            # Higher limit for auth/me since it's called on every page load
+            await rate_limiter.check_rate_limit(request, max_requests=60, window_minutes=1)
+        elif request.url.path.startswith("/api/auth"):
+            # Stricter limits for other auth endpoints (login, register)
             await rate_limiter.check_rate_limit(request, max_requests=20, window_minutes=1)
         elif request.url.path.startswith("/api/security"):
             # Moderate limits for security endpoints
