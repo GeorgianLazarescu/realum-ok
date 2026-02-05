@@ -178,10 +178,39 @@ const FamilyPage = () => {
     try {
       const res = await axios.post(`${API}/family/children/${childId}/interact?interaction_type=${interactionType}`);
       toast.success(res.data.message);
-      fetchFamilyStatus();
+      fetchAllData();
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Interaction failed');
     }
+  };
+  
+  const handleClaimAchievement = async (achievementId) => {
+    setProcessing(true);
+    try {
+      const res = await axios.post(`${API}/family/achievements/${achievementId}/claim`);
+      toast.success(res.data.message);
+      fetchAllData();
+      refreshUser();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to claim achievement');
+    }
+    setProcessing(false);
+  };
+  
+  const handleClaimEvent = async (eventType, childId = null) => {
+    setProcessing(true);
+    try {
+      const url = childId 
+        ? `${API}/family/events/claim?event_type=${eventType}&child_id=${childId}`
+        : `${API}/family/events/claim?event_type=${eventType}`;
+      const res = await axios.post(url);
+      toast.success(res.data.message);
+      fetchAllData();
+      refreshUser();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to claim event bonus');
+    }
+    setProcessing(false);
   };
   
   if (loading) {
@@ -199,7 +228,7 @@ const FamilyPage = () => {
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-center mb-8"
+          className="text-center mb-6"
         >
           <h1 className="text-3xl md:text-4xl font-orbitron font-black mb-2">
             <span className="text-pink-500">Family</span> & Relationships
@@ -207,6 +236,41 @@ const FamilyPage = () => {
           <p className="text-white/60">Build your virtual family in REALUM</p>
         </motion.div>
         
+        {/* Tab Navigation */}
+        <div className="flex justify-center gap-2 mb-6">
+          {[
+            { id: 'family', label: 'Family', icon: Heart },
+            { id: 'achievements', label: 'Achievements', icon: Trophy },
+            { id: 'events', label: 'Events', icon: Calendar }
+          ].map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-all ${
+                activeTab === tab.id
+                  ? 'bg-pink-500/20 border-pink-500 text-pink-400'
+                  : 'bg-white/5 border-white/20 text-white/60 hover:border-white/40'
+              }`}
+            >
+              <tab.icon className="w-4 h-4" />
+              {tab.label}
+              {tab.id === 'achievements' && (
+                <span className="text-xs bg-pink-500/30 px-1.5 rounded">
+                  {achievements.filter(a => a.can_claim).length}
+                </span>
+              )}
+              {tab.id === 'events' && familyEvents.active_events?.length > 0 && (
+                <span className="text-xs bg-yellow-500/30 px-1.5 rounded">
+                  {familyEvents.active_events.length}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+        
+        {/* Family Tab */}
+        {activeTab === 'family' && (
+          <>
         {/* Marriage Status Card */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
