@@ -483,6 +483,147 @@ const FamilyPage = () => {
             </CyberCard>
           )}
         </motion.div>
+        </>
+        )}
+        
+        {/* Achievements Tab */}
+        {activeTab === 'achievements' && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            <div className="grid md:grid-cols-2 gap-4">
+              {achievements.map(ach => (
+                <CyberCard 
+                  key={ach.id} 
+                  className={`p-4 ${ach.claimed ? 'opacity-60' : ''} ${ach.can_claim ? 'border-yellow-500/50' : ''}`}
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="text-3xl">{ach.badge}</div>
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between">
+                        <h4 className="font-bold text-white">{ach.name}</h4>
+                        {ach.claimed && <span className="text-xs text-green-400">✓ Claimed</span>}
+                      </div>
+                      <p className="text-sm text-white/60 mb-2">{ach.description}</p>
+                      
+                      {/* Progress bar */}
+                      <div className="h-2 bg-white/10 rounded-full overflow-hidden mb-2">
+                        <div 
+                          className={`h-full transition-all ${ach.progress >= 100 ? 'bg-green-500' : 'bg-pink-500'}`}
+                          style={{ width: `${Math.min(100, ach.progress)}%` }}
+                        />
+                      </div>
+                      
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-white/40">{ach.current} / {ach.requirement}</span>
+                        <span className="text-yellow-400">+{ach.reward_rlm} RLM</span>
+                      </div>
+                      
+                      {ach.can_claim && (
+                        <CyberButton
+                          onClick={() => handleClaimAchievement(ach.id)}
+                          disabled={processing}
+                          className="w-full mt-2 text-sm bg-yellow-500/20 border-yellow-500"
+                        >
+                          <Gift className="w-4 h-4 mr-1" />
+                          Claim Reward
+                        </CyberButton>
+                      )}
+                    </div>
+                  </div>
+                </CyberCard>
+              ))}
+            </div>
+          </motion.div>
+        )}
+        
+        {/* Events Tab */}
+        {activeTab === 'events' && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="space-y-6"
+          >
+            {/* Active Events */}
+            {familyEvents.active_events?.length > 0 && (
+              <div>
+                <h3 className="font-orbitron font-bold text-lg mb-4 flex items-center gap-2">
+                  <PartyPopper className="w-5 h-5 text-yellow-400" />
+                  Today's Events!
+                </h3>
+                <div className="space-y-3">
+                  {familyEvents.active_events.map((event, idx) => (
+                    <CyberCard key={idx} className="p-4 bg-gradient-to-r from-yellow-900/30 to-orange-900/30 border-yellow-500/50">
+                      <div className="flex items-center justify-between flex-wrap gap-4">
+                        <div className="flex items-center gap-3">
+                          <div className="text-4xl">{event.icon}</div>
+                          <div>
+                            <h4 className="font-bold text-yellow-300">{event.name}</h4>
+                            {event.partner && <p className="text-sm text-white/60">With {event.partner}</p>}
+                            {event.age && <p className="text-sm text-white/60">Turning {event.age} years old!</p>}
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-yellow-400 font-bold">+{event.bonus_rlm} RLM</p>
+                          {event.can_claim ? (
+                            <CyberButton
+                              onClick={() => handleClaimEvent(event.type, event.child_id)}
+                              disabled={processing}
+                              className="mt-2 text-sm bg-yellow-500/20 border-yellow-500"
+                            >
+                              <Gift className="w-4 h-4 mr-1" />
+                              Claim Bonus!
+                            </CyberButton>
+                          ) : event.claimed ? (
+                            <span className="text-green-400 text-sm">✓ Claimed</span>
+                          ) : null}
+                        </div>
+                      </div>
+                    </CyberCard>
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            {/* Upcoming Events */}
+            <div>
+              <h3 className="font-orbitron font-bold text-lg mb-4 flex items-center gap-2">
+                <Calendar className="w-5 h-5 text-blue-400" />
+                Upcoming Events
+              </h3>
+              {familyEvents.upcoming_events?.length > 0 ? (
+                <div className="space-y-3">
+                  {familyEvents.upcoming_events.map((event, idx) => (
+                    <CyberCard key={idx} className="p-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="text-3xl">{event.icon}</div>
+                          <div>
+                            <h4 className="font-bold">{event.name}</h4>
+                            <p className="text-sm text-white/40">
+                              {event.type === 'anniversary' ? `With ${event.partner}` : `Age ${event.age}`}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-white/60">{event.days_until} days</p>
+                          <p className="text-yellow-400 text-sm">+{event.bonus_rlm} RLM</p>
+                        </div>
+                      </div>
+                    </CyberCard>
+                  ))}
+                </div>
+              ) : (
+                <CyberCard className="p-8 text-center">
+                  <Calendar className="w-12 h-12 mx-auto mb-3 text-white/20" />
+                  <p className="text-white/40">No upcoming family events</p>
+                  <p className="text-sm text-white/30">Get married or have children to unlock events!</p>
+                </CyberCard>
+              )}
+            </div>
+          </motion.div>
+        )}
         
         {/* Propose Modal */}
         <AnimatePresence>
