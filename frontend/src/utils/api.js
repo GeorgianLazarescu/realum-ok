@@ -2,13 +2,49 @@ import axios from 'axios';
 
 export const API = process.env.REACT_APP_BACKEND_URL + '/api';
 
-// Configure axios defaults
-export const setupAxios = (token) => {
-  if (token) {
-    axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-  } else {
-    delete axios.defaults.headers.common['Authorization'];
+// Create axios instance with default config
+const apiClient = axios.create({
+  baseURL: API,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// Add request interceptor to always attach latest token from localStorage
+apiClient.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
   }
+);
+
+// Add response interceptor to handle 401 errors
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    // Don't auto-logout on 401 for login/register requests
+    if (error.response?.status === 401) {
+      const url = error.config?.url || '';
+      if (!url.includes('/auth/login') && !url.includes('/auth/register')) {
+        // Token might be expired or invalid
+        console.warn('Authentication error - token may be invalid');
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
+// Legacy function for backward compatibility (deprecated)
+export const setupAxios = (token) => {
+  // No longer needed - interceptor handles this automatically
+  // Keeping for backward compatibility with existing code
 };
 
-export default axios;
+export { apiClient };
+export default apiClient;
