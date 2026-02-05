@@ -10,7 +10,7 @@ import { API } from '../utils/api';
 import { useAuth } from '../context/AuthContext';
 import { useTranslation } from '../context/LanguageContext';
 import { CyberCard } from '../components/common/CyberUI';
-import { ObjectivesPanel, MiniTasksPanel, RandomEventsPanel, WorldTimeDisplay } from '../components/DashboardWidgets';
+import { ObjectivesPanel, MiniTasksPanel, RandomEventsPanel, WorldTimeDisplay, SeasonalEventsBanner } from '../components/DashboardWidgets';
 
 const DashboardPage = () => {
   const { user } = useAuth();
