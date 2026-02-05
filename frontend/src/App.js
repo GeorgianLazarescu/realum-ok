@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { Toaster } from 'sonner';
 
 // Context Providers
 import { AuthProvider } from './context/AuthContext';
@@ -11,6 +12,7 @@ import { Web3Provider } from './context/Web3Context';
 import Navbar from './components/common/Navbar';
 import ProtectedRoute from './components/common/ProtectedRoute';
 import DailyReward from './components/common/DailyReward';
+import StorytellingIntro from './components/StorytellingIntro';
 
 // Pages
 import {
