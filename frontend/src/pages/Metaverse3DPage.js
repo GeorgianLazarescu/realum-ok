@@ -161,12 +161,15 @@ const Metaverse3DPage = () => {
     osmImagery: true,
   });
   const [searchQuery, setSearchQuery] = useState('');
-  const [webglSupport, setWebglSupport] = useState(null);
+  const [webglSupport, setWebglSupport] = useState({ supported: true }); // Default to true
 
-  // Check WebGL support
+  // Check WebGL support on mount
   useEffect(() => {
     const support = checkWebGLSupport();
     setWebglSupport(support);
+    if (!support.supported) {
+      setIsLoading(false);
+    }
   }, []);
 
   // Initialize Cesium viewer
