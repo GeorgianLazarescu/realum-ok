@@ -437,7 +437,22 @@ const Metaverse3DPage = () => {
         style={{ background: '#000011' }}
       />
 
+      {/* Loading Overlay */}
+      {isLoading && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/90">
+          <div className="text-center">
+            <div className="relative w-24 h-24 mx-auto mb-6">
+              <Globe className="w-24 h-24 text-neon-cyan animate-pulse" />
+              <div className="absolute inset-0 border-4 border-neon-cyan/30 border-t-neon-cyan rounded-full animate-spin" />
+            </div>
+            <p className="text-neon-cyan font-mono text-lg">{loadingMessage || 'Loading 3D Earth...'}</p>
+            <p className="text-white/40 text-sm mt-2">Powered by OpenStreetMap & Cesium</p>
+          </div>
+        </div>
+      )}
+
       {/* UI Overlay */}
+      {!isLoading && (
       <div className="absolute inset-0 pointer-events-none pt-16">
         {/* Top controls */}
         <div className="absolute top-20 left-4 right-4 flex justify-between items-start pointer-events-auto">
