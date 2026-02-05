@@ -364,7 +364,7 @@ const Metaverse3DPage = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 20 }}
-                className="absolute top-36 right-4 w-72 pointer-events-auto"
+                className="absolute top-20 right-4 w-72 pointer-events-auto"
               >
                 <CyberCard className="p-4 bg-black/95">
                   <h3 className="font-orbitron font-bold text-neon-cyan mb-2">REALUM 3D EARTH</h3>
