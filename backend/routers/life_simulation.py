@@ -13,8 +13,11 @@ import uuid
 router = APIRouter(prefix="/api/life", tags=["Life Simulation"])
 
 # Get database and auth
-from core.database import get_db
+from core.database import db
 from core.auth import get_current_user
+
+def get_db():
+    return db
 
 # ============== ENUMS ==============
 
