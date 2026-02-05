@@ -77,6 +77,12 @@ const WalletPage = () => {
                   <CyberButton onClick={() => setShowTransfer(!showTransfer)} className="w-full sm:w-auto">
                     <Send className="w-4 h-4 inline mr-2" /> {t('transfer')}
                   </CyberButton>
+                  <CyberButton 
+                    onClick={() => window.location.href = '/purchase-rlm'} 
+                    className="w-full sm:w-auto bg-green-500/20 border-green-500 hover:bg-green-500/30"
+                  >
+                    <ArrowDownRight className="w-4 h-4 inline mr-2" /> Buy RLM
+                  </CyberButton>
                 </div>
               </div>
             </CyberCard>
