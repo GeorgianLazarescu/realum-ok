@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Heart, HeartCrack, Users, Baby, Gift, Send, Check, X,
-  Loader2, User, Crown, BookOpen, Utensils, Gamepad2, Sparkles
+  Loader2, User, Crown, BookOpen, Utensils, Gamepad2, Sparkles,
+  Trophy, Calendar, Cake, PartyPopper
 } from 'lucide-react';
 import axios from 'axios';
 import { API } from '../utils/api';
@@ -14,8 +15,11 @@ const FamilyPage = () => {
   const { user, refreshUser } = useAuth();
   
   const [familyStatus, setFamilyStatus] = useState(null);
+  const [achievements, setAchievements] = useState([]);
+  const [familyEvents, setFamilyEvents] = useState({ active_events: [], upcoming_events: [] });
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
+  const [activeTab, setActiveTab] = useState('family'); // family, achievements, events
   
   // Modal states
   const [showProposeModal, setShowProposeModal] = useState(false);
@@ -33,8 +37,24 @@ const FamilyPage = () => {
   const [searchResults, setSearchResults] = useState([]);
   
   useEffect(() => {
-    fetchFamilyStatus();
+    fetchAllData();
   }, []);
+  
+  const fetchAllData = async () => {
+    try {
+      const [statusRes, achievementsRes, eventsRes] = await Promise.all([
+        axios.get(`${API}/family/status`),
+        axios.get(`${API}/family/achievements`),
+        axios.get(`${API}/family/events`)
+      ]);
+      setFamilyStatus(statusRes.data);
+      setAchievements(achievementsRes.data.achievements || []);
+      setFamilyEvents(eventsRes.data);
+    } catch (error) {
+      console.error('Failed to load family data:', error);
+    }
+    setLoading(false);
+  };
   
   const fetchFamilyStatus = async () => {
     try {
@@ -43,7 +63,6 @@ const FamilyPage = () => {
     } catch (error) {
       toast.error('Failed to load family status');
     }
-    setLoading(false);
   };
   
   const searchUsers = async (query) => {
