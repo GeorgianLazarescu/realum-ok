@@ -40,6 +40,7 @@ from routers.defi import router as defi_router
 from routers.video import router as video_router
 from routers.nft import router as nft_router
 from routers.mobile import router as mobile_router
+from routers.life_simulation import router as life_router
 
 from core.security import SecurityHeadersMiddleware, RequestSizeMiddleware
 from core.rate_limiter import rate_limiter
