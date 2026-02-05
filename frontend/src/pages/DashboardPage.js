@@ -154,6 +154,15 @@ const DashboardPage = () => {
           
           {/* Sidebar */}
           <div className="space-y-4 sm:space-y-6">
+            {/* Objectives Panel */}
+            <ObjectivesPanel />
+            
+            {/* Mini Tasks Panel */}
+            <MiniTasksPanel />
+            
+            {/* Random Events Panel */}
+            <RandomEventsPanel />
+            
             {/* Platform Stats */}
             {stats && (
               <CyberCard className="p-4 sm:p-6">
