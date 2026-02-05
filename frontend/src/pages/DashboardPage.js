@@ -69,6 +69,9 @@ const DashboardPage = () => {
           </div>
         </motion.div>
         
+        {/* Seasonal Events Banner */}
+        <SeasonalEventsBanner />
+        
         {/* Stats Grid */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4 mb-6">
           <CyberCard className="text-center p-3 sm:p-6">
