@@ -7,12 +7,17 @@ import {
 } from 'lucide-react';
 import { CyberCard, CyberButton } from '../components/common/CyberUI';
 
+// Set Cesium base URL before importing
+window.CESIUM_BASE_URL = '/cesium/';
+
 // Import Cesium
 import * as Cesium from 'cesium';
 import 'cesium/Build/Cesium/Widgets/widgets.css';
 
 // Set Cesium Ion token
-Cesium.Ion.defaultAccessToken = process.env.REACT_APP_CESIUM_ION_TOKEN;
+if (process.env.REACT_APP_CESIUM_ION_TOKEN) {
+  Cesium.Ion.defaultAccessToken = process.env.REACT_APP_CESIUM_ION_TOKEN;
+}
 
 // REALUM zones mapped to real-world locations
 const REALUM_ZONES = [
