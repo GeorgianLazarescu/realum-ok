@@ -46,18 +46,26 @@ const DashboardPage = () => {
       <div className="max-w-7xl mx-auto">
         {/* Welcome Section */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-6 sm:mb-8">
-          <h1 className="text-2xl sm:text-3xl md:text-4xl font-orbitron font-black mb-2 leading-tight">
-            {t('welcome')}, <span className="text-neon-cyan block sm:inline">{user?.username}</span>
-          </h1>
-          <div className="flex flex-wrap items-center gap-2 text-sm">
-            <span 
-              className="px-2 py-1 text-xs border uppercase"
-              style={{ borderColor: roleColors[user?.role], color: roleColors[user?.role] }}
-              data-testid="user-role"
-            >
-              {user?.role}
-            </span>
-            <span className="text-white/60 text-xs sm:text-sm">Member since {new Date(user?.created_at).toLocaleDateString()}</span>
+          <div className="flex justify-between items-start">
+            <div>
+              <h1 className="text-2xl sm:text-3xl md:text-4xl font-orbitron font-black mb-2 leading-tight">
+                {t('welcome')}, <span className="text-neon-cyan block sm:inline">{user?.username}</span>
+              </h1>
+              <div className="flex flex-wrap items-center gap-2 text-sm">
+                <span 
+                  className="px-2 py-1 text-xs border uppercase"
+                  style={{ borderColor: roleColors[user?.role], color: roleColors[user?.role] }}
+                  data-testid="user-role"
+                >
+                  {user?.role}
+                </span>
+                <span className="text-white/60 text-xs sm:text-sm">Member since {new Date(user?.created_at).toLocaleDateString()}</span>
+              </div>
+            </div>
+            {/* World Time */}
+            <div className="hidden md:block">
+              <WorldTimeDisplay />
+            </div>
           </div>
         </motion.div>
         
