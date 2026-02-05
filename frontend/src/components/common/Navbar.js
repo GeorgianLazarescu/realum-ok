@@ -31,7 +31,7 @@ const Navbar = () => {
   
   const navItems = [
     { path: '/dashboard', icon: Home, label: t('dashboard') },
-    { path: '/metaverse', icon: Layers, label: t('metaverse') },
+    { path: '/metaverse/3d', icon: Layers, label: '3D Earth' },
     { path: '/jobs', icon: Briefcase, label: t('jobs') },
     { path: '/courses', icon: GraduationCap, label: t('courses') },
     { path: '/voting', icon: Vote, label: t('voting') },
