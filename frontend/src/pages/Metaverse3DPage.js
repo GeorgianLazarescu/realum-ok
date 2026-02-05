@@ -238,6 +238,9 @@ const Metaverse3DPage = () => {
 
   return (
     <div className="fixed inset-0 bg-black" data-testid="metaverse-3d-cesium-page">
+      {/* Inject Cesium styles */}
+      <style>{cesiumStyles}</style>
+      
       {/* Cesium Viewer Container - Full Screen below navbar */}
       <div 
         id="cesium-container"
@@ -264,10 +267,8 @@ const Metaverse3DPage = () => {
           timeline={false}
           navigationHelpButton={false}
           onClick={handleEntityClick}
-          style={{ 
-            width: '100%',
-            height: '100%',
-            position: 'absolute',
+          className="cesium-fullscreen"
+        >
             top: 0,
             left: 0
           }}
