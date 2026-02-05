@@ -67,6 +67,34 @@ const webpackConfig = {
         ],
       };
 
+      // Cesium configuration
+      webpackConfig.plugins.push(
+        new CopyWebpackPlugin({
+          patterns: [
+            { from: path.join(cesiumSource, "Workers"), to: "cesium/Workers" },
+            { from: path.join(cesiumSource, "ThirdParty"), to: "cesium/ThirdParty" },
+            { from: path.join(cesiumSource, "Assets"), to: "cesium/Assets" },
+            { from: path.join(cesiumSource, "Widgets"), to: "cesium/Widgets" },
+          ],
+        }),
+        new webpack.DefinePlugin({
+          CESIUM_BASE_URL: JSON.stringify("/cesium"),
+        })
+      );
+
+      // Cesium needs this for proper module resolution
+      webpackConfig.resolve = {
+        ...webpackConfig.resolve,
+        fallback: {
+          ...webpackConfig.resolve?.fallback,
+          fs: false,
+          http: false,
+          https: false,
+          zlib: false,
+          url: false,
+        },
+      };
+
       // Add health check plugin to webpack if enabled
       if (config.enableHealthCheck && healthPluginInstance) {
         webpackConfig.plugins.push(healthPluginInstance);
