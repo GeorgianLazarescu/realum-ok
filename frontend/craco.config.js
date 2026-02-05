@@ -1,6 +1,12 @@
 // craco.config.js
 const path = require("path");
+const CopyWebpackPlugin = require("copy-webpack-plugin");
+const webpack = require("webpack");
 require("dotenv").config();
+
+// Cesium configuration
+const cesiumSource = "node_modules/cesium/Build/Cesium";
+const cesiumWorkers = "../Build/Cesium/Workers";
 
 // Check if we're in development/preview mode (not production build)
 // Craco sets NODE_ENV=development for start, NODE_ENV=production for build
