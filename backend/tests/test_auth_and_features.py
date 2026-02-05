@@ -274,11 +274,12 @@ class TestDashboardData:
     
     def test_get_token_economy(self):
         """Test getting token economy stats"""
-        response = requests.get(f"{BASE_URL}/api/economy")
+        response = requests.get(f"{BASE_URL}/api/simulation/economy")
         assert response.status_code == 200
         data = response.json()
         # Verify economy data structure
-        assert isinstance(data, dict)
+        assert "economy" in data
+        assert "total_supply" in data["economy"]
     
     def test_get_platform_stats(self):
         """Test getting platform statistics"""
