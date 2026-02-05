@@ -3,9 +3,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { 
   Home, Info, Layers, MapPin, Globe, Building2, Mountain,
-  ZoomIn, ZoomOut, RotateCcw, Search, X, AlertTriangle
+  ZoomIn, ZoomOut, RotateCcw, Search, X, AlertTriangle, User
 } from 'lucide-react';
 import { CyberCard, CyberButton } from '../components/common/CyberUI';
+import LifeSimulationPanel from '../components/LifeSimulationPanel';
 
 // Import Resium (React wrapper for Cesium)
 import { Viewer, Entity, PointGraphics, LabelGraphics, CameraFlyTo } from 'resium';
