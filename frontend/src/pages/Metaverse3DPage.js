@@ -174,15 +174,17 @@ const Metaverse3DPage = () => {
 
   // Initialize Cesium viewer
   useEffect(() => {
-    if (!cesiumContainerRef.current || !webglSupport?.supported) return;
+    if (!cesiumContainerRef.current) return;
+    if (viewerRef.current) return; // Already initialized
 
     let viewer = null;
 
     const initViewer = async () => {
       try {
         setLoadingMessage('Creating 3D globe...');
+        console.log('Initializing Cesium viewer...');
         
-        // Create the viewer without terrain first (simpler, faster load)
+        // Create the viewer
         viewer = new Viewer(cesiumContainerRef.current, {
           animation: false,
           baseLayerPicker: false,
@@ -199,15 +201,15 @@ const Metaverse3DPage = () => {
         });
 
         viewerRef.current = viewer;
+        console.log('Viewer created successfully');
 
         // Set dark background
         viewer.scene.backgroundColor = Color.fromCssColorString('#000011');
         viewer.scene.globe.baseColor = Color.fromCssColorString('#0a0a1a');
-        
-        // Enable lighting
         viewer.scene.globe.enableLighting = false;
 
         setLoadingMessage('Loading OpenStreetMap...');
+        console.log('Adding OSM imagery...');
         
         // Add OpenStreetMap imagery
         viewer.imageryLayers.removeAll();
@@ -217,16 +219,19 @@ const Metaverse3DPage = () => {
         viewer.imageryLayers.addImageryProvider(osmImagery);
 
         setLoadingMessage('Loading 3D buildings...');
+        console.log('Adding OSM buildings...');
         
         // Add OSM Buildings 3D tileset
         try {
           const osmBuildingsTileset = await createOsmBuildingsAsync();
           viewer.scene.primitives.add(osmBuildingsTileset);
+          console.log('OSM buildings added');
         } catch (e) {
           console.warn('OSM Buildings not loaded:', e.message);
         }
 
         setLoadingMessage('Adding REALUM zones...');
+        console.log('Adding zone markers...');
 
         // Add REALUM zone markers
         REALUM_ZONES.forEach(zone => {
