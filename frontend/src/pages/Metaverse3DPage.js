@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { 
   Home, Info, Layers, MapPin, Globe, Building2, Mountain,
-  ZoomIn, ZoomOut, RotateCcw, Search, X, Loader2, AlertTriangle
+  ZoomIn, ZoomOut, RotateCcw, Search, X, AlertTriangle
 } from 'lucide-react';
 import { CyberCard, CyberButton } from '../components/common/CyberUI';
 
@@ -11,12 +11,27 @@ import { CyberCard, CyberButton } from '../components/common/CyberUI';
 window.CESIUM_BASE_URL = '/cesium/';
 
 // Import Cesium
-import * as Cesium from 'cesium';
+import {
+  Ion,
+  Viewer,
+  Cartesian3,
+  Color,
+  OpenStreetMapImageryProvider,
+  createOsmBuildingsAsync,
+  Math as CesiumMath,
+  ScreenSpaceEventType,
+  defined,
+  HeightReference,
+  VerticalOrigin,
+  Cartesian2,
+  LabelStyle
+} from 'cesium';
 import 'cesium/Build/Cesium/Widgets/widgets.css';
 
 // Set Cesium Ion token
-if (process.env.REACT_APP_CESIUM_ION_TOKEN) {
-  Cesium.Ion.defaultAccessToken = process.env.REACT_APP_CESIUM_ION_TOKEN;
+const CESIUM_TOKEN = process.env.REACT_APP_CESIUM_ION_TOKEN;
+if (CESIUM_TOKEN) {
+  Ion.defaultAccessToken = CESIUM_TOKEN;
 }
 
 // REALUM zones mapped to real-world locations
@@ -82,7 +97,7 @@ const checkWebGLSupport = () => {
   try {
     const canvas = document.createElement('canvas');
     const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
-    return { supported: !!gl, version: gl instanceof WebGL2RenderingContext ? 2 : 1 };
+    return { supported: !!gl };
   } catch (e) {
     return { supported: false, error: e.message };
   }
@@ -101,12 +116,12 @@ const BrowserCompatibilityError = () => {
             Browser Not Supported
           </h1>
           <p className="text-white/70 mb-6">
-            The 3D Earth view requires WebGL2 which is not available in your browser.
+            The 3D Earth view requires WebGL which is not available in your browser.
             Please use Chrome, Firefox, or the latest Edge.
           </p>
-          <CyberButton onClick={() => navigate('/metaverse')}>
+          <CyberButton onClick={() => navigate('/dashboard')}>
             <Home className="w-4 h-4 mr-2" />
-            Use 2D Map Instead
+            Back to Dashboard
           </CyberButton>
         </div>
       </CyberCard>
@@ -123,7 +138,7 @@ const LoadingScreen = ({ message }) => (
         <div className="absolute inset-0 border-4 border-neon-cyan/30 border-t-neon-cyan rounded-full animate-spin" />
       </div>
       <p className="text-neon-cyan font-mono text-lg">{message || 'Loading 3D Earth...'}</p>
-      <p className="text-white/40 text-sm mt-2">Initializing Cesium globe with OSM data</p>
+      <p className="text-white/40 text-sm mt-2">Powered by OpenStreetMap & Cesium</p>
     </div>
   </div>
 );
@@ -159,40 +174,41 @@ const Metaverse3DPage = () => {
     if (!cesiumContainerRef.current || !webglSupport?.supported) return;
 
     let viewer = null;
-    let osmBuildingsTileset = null;
 
     const initViewer = async () => {
       try {
         setLoadingMessage('Creating 3D globe...');
         
-        // Create the viewer with terrain
-        viewer = new Cesium.Viewer(cesiumContainerRef.current, {
-          terrain: Cesium.Terrain.fromWorldTerrain(),
+        // Create the viewer without terrain first (simpler, faster load)
+        viewer = new Viewer(cesiumContainerRef.current, {
           animation: false,
           baseLayerPicker: false,
           fullscreenButton: false,
           vrButton: false,
           geocoder: false,
           homeButton: false,
-          infoBox: true,
+          infoBox: false,
           sceneModePicker: false,
           selectionIndicator: true,
           timeline: false,
           navigationHelpButton: false,
-          creditContainer: document.createElement('div'), // Hide credits
+          creditContainer: document.createElement('div'),
         });
 
         viewerRef.current = viewer;
 
         // Set dark background
-        viewer.scene.backgroundColor = Cesium.Color.fromCssColorString('#000011');
-        viewer.scene.globe.baseColor = Cesium.Color.fromCssColorString('#0a0a1a');
-
-        setLoadingMessage('Loading OpenStreetMap imagery...');
+        viewer.scene.backgroundColor = Color.fromCssColorString('#000011');
+        viewer.scene.globe.baseColor = Color.fromCssColorString('#0a0a1a');
         
-        // Remove default imagery and add OSM
+        // Enable lighting
+        viewer.scene.globe.enableLighting = false;
+
+        setLoadingMessage('Loading OpenStreetMap...');
+        
+        // Add OpenStreetMap imagery
         viewer.imageryLayers.removeAll();
-        const osmImagery = new Cesium.OpenStreetMapImageryProvider({
+        const osmImagery = new OpenStreetMapImageryProvider({
           url: 'https://tile.openstreetmap.org/'
         });
         viewer.imageryLayers.addImageryProvider(osmImagery);
@@ -201,10 +217,10 @@ const Metaverse3DPage = () => {
         
         // Add OSM Buildings 3D tileset
         try {
-          osmBuildingsTileset = await Cesium.createOsmBuildingsAsync();
+          const osmBuildingsTileset = await createOsmBuildingsAsync();
           viewer.scene.primitives.add(osmBuildingsTileset);
         } catch (e) {
-          console.warn('Could not load OSM Buildings:', e);
+          console.warn('OSM Buildings not loaded:', e.message);
         }
 
         setLoadingMessage('Adding REALUM zones...');
@@ -213,36 +229,28 @@ const Metaverse3DPage = () => {
         REALUM_ZONES.forEach(zone => {
           viewer.entities.add({
             name: zone.name,
-            position: Cesium.Cartesian3.fromDegrees(
+            position: Cartesian3.fromDegrees(
               zone.coords.lon, 
               zone.coords.lat, 
               zone.coords.height
             ),
             point: {
-              pixelSize: 15,
-              color: Cesium.Color.fromCssColorString(zone.color),
-              outlineColor: Cesium.Color.WHITE,
-              outlineWidth: 2,
-              heightReference: Cesium.HeightReference.RELATIVE_TO_GROUND,
+              pixelSize: 20,
+              color: Color.fromCssColorString(zone.color),
+              outlineColor: Color.WHITE,
+              outlineWidth: 3,
+              heightReference: HeightReference.RELATIVE_TO_GROUND,
             },
             label: {
               text: zone.name,
-              font: '14px Orbitron, sans-serif',
-              fillColor: Cesium.Color.fromCssColorString(zone.color),
-              outlineColor: Cesium.Color.BLACK,
+              font: '16px sans-serif',
+              fillColor: Color.fromCssColorString(zone.color),
+              outlineColor: Color.BLACK,
               outlineWidth: 2,
-              style: Cesium.LabelStyle.FILL_AND_OUTLINE,
-              verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
-              pixelOffset: new Cesium.Cartesian2(0, -20),
-              heightReference: Cesium.HeightReference.RELATIVE_TO_GROUND,
+              style: LabelStyle.FILL_AND_OUTLINE,
+              verticalOrigin: VerticalOrigin.BOTTOM,
+              pixelOffset: new Cartesian2(0, -25),
             },
-            description: `
-              <div style="padding: 10px; font-family: sans-serif;">
-                <h3 style="color: ${zone.color}; margin: 0 0 10px 0;">${zone.name}</h3>
-                <p style="margin: 0 0 5px 0;"><strong>Location:</strong> ${zone.city}</p>
-                <p style="margin: 0;">${zone.description}</p>
-              </div>
-            `,
             properties: {
               zoneId: zone.id,
               zonePath: zone.path,
@@ -254,27 +262,27 @@ const Metaverse3DPage = () => {
         // Click handler for zones
         viewer.screenSpaceEventHandler.setInputAction((click) => {
           const pickedObject = viewer.scene.pick(click.position);
-          if (Cesium.defined(pickedObject) && pickedObject.id) {
+          if (defined(pickedObject) && pickedObject.id) {
             const entity = pickedObject.id;
             if (entity.properties && entity.properties.zoneData) {
-              setSelectedZone(entity.properties.zoneData.getValue());
+              const zoneData = entity.properties.zoneData.getValue();
+              setSelectedZone(zoneData);
             }
           } else {
             setSelectedZone(null);
           }
-        }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
+        }, ScreenSpaceEventType.LEFT_CLICK);
 
         // Set initial camera position (overview of Earth)
-        viewer.camera.flyTo({
-          destination: Cesium.Cartesian3.fromDegrees(10, 30, 20000000),
-          duration: 0,
+        viewer.camera.setView({
+          destination: Cartesian3.fromDegrees(10, 20, 25000000),
         });
 
         setIsLoading(false);
         setLoadingMessage('');
 
       } catch (err) {
-        console.error('Error initializing Cesium:', err);
+        console.error('Cesium Error:', err);
         setError(err.message);
         setIsLoading(false);
       }
@@ -297,14 +305,14 @@ const Metaverse3DPage = () => {
     
     setSelectedZone(zone);
     viewerRef.current.camera.flyTo({
-      destination: Cesium.Cartesian3.fromDegrees(
+      destination: Cartesian3.fromDegrees(
         zone.coords.lon,
         zone.coords.lat,
-        zone.coords.height + 2000
+        zone.coords.height + 5000
       ),
       orientation: {
-        heading: Cesium.Math.toRadians(0),
-        pitch: Cesium.Math.toRadians(-45),
+        heading: CesiumMath.toRadians(0),
+        pitch: CesiumMath.toRadians(-35),
         roll: 0,
       },
       duration: 2,
@@ -314,18 +322,20 @@ const Metaverse3DPage = () => {
   // Camera controls
   const zoomIn = useCallback(() => {
     if (!viewerRef.current) return;
-    viewerRef.current.camera.zoomIn(viewerRef.current.camera.positionCartographic.height * 0.3);
+    const camera = viewerRef.current.camera;
+    camera.zoomIn(camera.positionCartographic.height * 0.3);
   }, []);
 
   const zoomOut = useCallback(() => {
     if (!viewerRef.current) return;
-    viewerRef.current.camera.zoomOut(viewerRef.current.camera.positionCartographic.height * 0.3);
+    const camera = viewerRef.current.camera;
+    camera.zoomOut(camera.positionCartographic.height * 0.3);
   }, []);
 
   const resetView = useCallback(() => {
     if (!viewerRef.current) return;
     viewerRef.current.camera.flyTo({
-      destination: Cesium.Cartesian3.fromDegrees(10, 30, 20000000),
+      destination: Cartesian3.fromDegrees(10, 20, 25000000),
       duration: 2,
     });
     setSelectedZone(null);
@@ -339,11 +349,13 @@ const Metaverse3DPage = () => {
       const newState = { ...prev, [layerName]: !prev[layerName] };
 
       if (layerName === 'osmBuildings') {
-        viewerRef.current.scene.primitives._primitives.forEach(p => {
-          if (p.constructor.name === 'Cesium3DTileset') {
+        const primitives = viewerRef.current.scene.primitives;
+        for (let i = 0; i < primitives.length; i++) {
+          const p = primitives.get(i);
+          if (p.asset && p.asset.id === 96188) {
             p.show = newState.osmBuildings;
           }
-        });
+        }
       } else if (layerName === 'terrain') {
         viewerRef.current.scene.globe.show = newState.terrain;
       } else if (layerName === 'osmImagery') {
@@ -362,37 +374,24 @@ const Metaverse3DPage = () => {
     if (!searchQuery.trim() || !viewerRef.current) return;
 
     try {
-      // Use Cesium's geocoder service
-      const resource = await Cesium.IonResource.fromAssetId(1);
-      const results = await Cesium.GeocoderService.geocode(searchQuery);
+      // Use OpenStreetMap Nominatim for geocoding
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}`
+      );
+      const data = await response.json();
       
-      if (results && results.length > 0) {
+      if (data && data.length > 0) {
         viewerRef.current.camera.flyTo({
-          destination: results[0].destination,
+          destination: Cartesian3.fromDegrees(
+            parseFloat(data[0].lon),
+            parseFloat(data[0].lat),
+            10000
+          ),
           duration: 2,
         });
       }
     } catch (err) {
-      // Fallback: try OpenStreetMap Nominatim
-      try {
-        const response = await fetch(
-          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}`
-        );
-        const data = await response.json();
-        
-        if (data && data.length > 0) {
-          viewerRef.current.camera.flyTo({
-            destination: Cesium.Cartesian3.fromDegrees(
-              parseFloat(data[0].lon),
-              parseFloat(data[0].lat),
-              5000
-            ),
-            duration: 2,
-          });
-        }
-      } catch (searchErr) {
-        console.error('Search failed:', searchErr);
-      }
+      console.error('Search failed:', err);
     }
   }, [searchQuery]);
 
@@ -416,7 +415,7 @@ const Metaverse3DPage = () => {
             <h1 className="font-orbitron text-xl font-bold text-red-500 mb-2">
               Failed to Load 3D Earth
             </h1>
-            <p className="text-white/70 mb-4">{error}</p>
+            <p className="text-white/70 mb-4 text-sm">{error}</p>
             <CyberButton onClick={() => window.location.reload()}>
               Try Again
             </CyberButton>
@@ -442,9 +441,9 @@ const Metaverse3DPage = () => {
           {/* Left controls */}
           <div className="flex flex-col gap-2">
             <button
-              onClick={() => navigate('/metaverse')}
+              onClick={() => navigate('/dashboard')}
               className="p-2 bg-black/80 border border-white/30 hover:border-neon-cyan transition-colors"
-              title="2D Map"
+              title="Dashboard"
             >
               <Home className="w-5 h-5 text-white" />
             </button>
@@ -464,7 +463,7 @@ const Metaverse3DPage = () => {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search location..."
+                placeholder="Search any location..."
                 className="w-full px-4 py-2 pl-10 bg-black/80 border border-white/30 focus:border-neon-cyan text-white placeholder-white/40 outline-none transition-colors"
               />
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/50" />
@@ -550,7 +549,7 @@ const Metaverse3DPage = () => {
                       className="w-4 h-4 accent-neon-cyan"
                     />
                     <Mountain className="w-4 h-4 text-white/60" />
-                    <span className="text-sm text-white/80">3D Terrain</span>
+                    <span className="text-sm text-white/80">Globe</span>
                   </label>
                 </div>
               </CyberCard>
