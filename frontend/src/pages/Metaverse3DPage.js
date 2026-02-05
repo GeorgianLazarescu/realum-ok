@@ -661,6 +661,53 @@ const Metaverse3DPage = () => {
                 </CyberCard>
               </motion.div>
             )}
+
+            {/* Selected NPC Panel */}
+            {selectedNPC && !selectedZone && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 20 }}
+                className="absolute bottom-24 lg:bottom-8 right-4 lg:w-80 pointer-events-auto"
+              >
+                <CyberCard className="p-4 bg-black/95 border-yellow-500/50">
+                  <button
+                    onClick={() => setSelectedNPC(null)}
+                    className="absolute top-2 right-2 p-1 hover:bg-white/10 rounded transition-colors"
+                  >
+                    <X className="w-4 h-4 text-white/60" />
+                  </button>
+                  
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-12 h-12 flex items-center justify-center bg-yellow-500/20 border border-yellow-500/50 rounded text-2xl">
+                      {selectedNPC.avatar}
+                    </div>
+                    <div>
+                      <h3 className="font-orbitron font-bold text-yellow-400">
+                        {selectedNPC.name}
+                      </h3>
+                      <p className="text-xs text-white/60">{selectedNPC.role} • {selectedNPC.location}</p>
+                    </div>
+                  </div>
+                  
+                  <p className="text-sm text-white/70 mb-2">{selectedNPC.activity}</p>
+                  
+                  <div className={`text-xs mb-4 ${selectedNPC.available ? 'text-green-400' : 'text-red-400'}`}>
+                    {selectedNPC.available ? '● Available to chat' : '● Currently busy'}
+                  </div>
+                  
+                  {selectedNPC.available && (
+                    <CyberButton 
+                      onClick={() => navigate('/chat')}
+                      className="w-full bg-yellow-500/20 border-yellow-500/50 hover:bg-yellow-500/30"
+                    >
+                      <Users className="w-4 h-4 mr-2" />
+                      Talk to {selectedNPC.name}
+                    </CyberButton>
+                  )}
+                </CyberCard>
+              </motion.div>
+            )}
           </AnimatePresence>
         </div>
       )}
