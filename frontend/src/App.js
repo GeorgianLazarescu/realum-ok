@@ -39,7 +39,9 @@ import {
   AchievementsPage,
   SocialPage,
   NotificationsPage,
-  ChatPage
+  ChatPage,
+  PurchaseRLMPage,
+  FamilyPage
 } from './pages';
 
 // App Layout Component with Intro
