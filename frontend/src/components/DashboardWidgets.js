@@ -514,4 +514,60 @@ export const WorldTimeDisplay = () => {
   );
 };
 
-export default { ObjectivesPanel, MiniTasksPanel, RandomEventsPanel, NotificationsDropdown, WorldTimeDisplay };
+// Seasonal Events Banner Component
+export const SeasonalEventsBanner = () => {
+  const [events, setEvents] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchEvents = async () => {
+      try {
+        const response = await axios.get(`${API}/api/events/calendar/active`);
+        setEvents(response.data.active_events || []);
+      } catch (error) {
+        console.error('Error fetching events:', error);
+      }
+      setLoading(false);
+    };
+    fetchEvents();
+  }, []);
+
+  if (loading || events.length === 0) return null;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -10 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="mb-6"
+    >
+      <CyberCard className="p-4 bg-gradient-to-r from-purple-900/50 to-pink-900/50 border-purple-500/30">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-purple-500/20 rounded-lg flex items-center justify-center">
+              <span className="text-2xl">🎉</span>
+            </div>
+            <div>
+              <h3 className="font-orbitron text-lg text-purple-300 font-bold">
+                {events[0].name}
+              </h3>
+              <p className="text-sm text-white/60">{events[0].description}</p>
+            </div>
+          </div>
+          <div className="text-right">
+            {events[0].bonus_rlm > 0 && (
+              <p className="text-yellow-400 font-bold">+{events[0].bonus_rlm} RLM Bonus</p>
+            )}
+            {events[0].bonus_xp > 1 && (
+              <p className="text-green-400 text-sm">{events[0].bonus_xp}x XP Multiplier</p>
+            )}
+            {events[0].days_remaining !== undefined && (
+              <p className="text-white/40 text-xs mt-1">{events[0].days_remaining} days remaining</p>
+            )}
+          </div>
+        </div>
+      </CyberCard>
+    </motion.div>
+  );
+};
+
+export default { ObjectivesPanel, MiniTasksPanel, RandomEventsPanel, NotificationsDropdown, WorldTimeDisplay, SeasonalEventsBanner };
