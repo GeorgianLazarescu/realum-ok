@@ -1,14 +1,127 @@
-import React, { useRef, useState, Suspense } from 'react';
+import React, { useRef, useState, Suspense, useEffect } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, Stars, Html } from '@react-three/drei';
 import * as THREE from 'three';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { 
-  Maximize2, Minimize2, Home, Info,
+  Maximize2, Minimize2, Home, Info, AlertTriangle, Chrome, Monitor,
   GraduationCap, Briefcase, Vote, Wallet, ShoppingBag, Users
 } from 'lucide-react';
 import { CyberCard, CyberButton } from '../components/common/CyberUI';
+
+// WebGL2 compatibility check
+const checkWebGLSupport = () => {
+  try {
+    const canvas = document.createElement('canvas');
+    const gl = canvas.getContext('webgl2') || canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+    if (!gl) return { supported: false, version: null };
+    
+    const isWebGL2 = gl instanceof WebGL2RenderingContext;
+    return { 
+      supported: true, 
+      version: isWebGL2 ? 2 : 1,
+      renderer: gl.getParameter(gl.RENDERER),
+      vendor: gl.getParameter(gl.VENDOR)
+    };
+  } catch (e) {
+    return { supported: false, version: null, error: e.message };
+  }
+};
+
+// Browser compatibility error component
+const BrowserCompatibilityError = ({ webglInfo }) => {
+  const navigate = useNavigate();
+  
+  return (
+    <div 
+      className="min-h-screen bg-gradient-to-b from-gray-900 via-black to-gray-900 flex items-center justify-center p-4"
+      data-testid="webgl-error-page"
+    >
+      <div className="max-w-lg w-full">
+        <CyberCard className="p-8 bg-black/90 border-red-500/50">
+          <div className="text-center">
+            {/* Warning Icon */}
+            <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-red-500/20 flex items-center justify-center border-2 border-red-500/50">
+              <AlertTriangle className="w-10 h-10 text-red-500" />
+            </div>
+            
+            {/* Title */}
+            <h1 className="font-orbitron text-2xl font-bold text-red-500 mb-2">
+              Browser Not Supported
+            </h1>
+            
+            {/* Message */}
+            <p className="text-white/70 mb-6">
+              The 3D Metaverse requires <span className="text-neon-cyan font-semibold">WebGL2</span> technology 
+              which is not available in your current browser.
+            </p>
+            
+            {/* Technical Details */}
+            <div className="bg-gray-900/50 rounded-lg p-4 mb-6 text-left">
+              <p className="text-xs font-mono text-white/40 mb-2">DIAGNOSTIC INFO:</p>
+              <div className="text-xs text-white/60 space-y-1">
+                <p>• WebGL Support: <span className={webglInfo?.supported ? 'text-yellow-500' : 'text-red-500'}>
+                  {webglInfo?.supported ? `Version ${webglInfo.version} (needs v2)` : 'Not Available'}
+                </span></p>
+                <p>• Browser: <span className="text-white/40">{navigator.userAgent.split(' ').slice(-2).join(' ')}</span></p>
+              </div>
+            </div>
+            
+            {/* Recommended Browsers */}
+            <div className="mb-6">
+              <p className="text-sm text-white/60 mb-3">Please use a modern browser:</p>
+              <div className="flex justify-center gap-4">
+                <a 
+                  href="https://www.google.com/chrome/" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="flex flex-col items-center gap-2 p-3 bg-white/5 hover:bg-white/10 rounded-lg transition-colors group"
+                >
+                  <Chrome className="w-8 h-8 text-white/60 group-hover:text-neon-cyan transition-colors" />
+                  <span className="text-xs text-white/60 group-hover:text-white transition-colors">Chrome</span>
+                </a>
+                <a 
+                  href="https://www.mozilla.org/firefox/" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="flex flex-col items-center gap-2 p-3 bg-white/5 hover:bg-white/10 rounded-lg transition-colors group"
+                >
+                  <Monitor className="w-8 h-8 text-white/60 group-hover:text-orange-500 transition-colors" />
+                  <span className="text-xs text-white/60 group-hover:text-white transition-colors">Firefox</span>
+                </a>
+                <a 
+                  href="https://www.microsoft.com/edge" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="flex flex-col items-center gap-2 p-3 bg-white/5 hover:bg-white/10 rounded-lg transition-colors group"
+                >
+                  <Monitor className="w-8 h-8 text-white/60 group-hover:text-blue-500 transition-colors" />
+                  <span className="text-xs text-white/60 group-hover:text-white transition-colors">Edge</span>
+                </a>
+              </div>
+            </div>
+            
+            {/* Actions */}
+            <div className="flex gap-3 justify-center">
+              <CyberButton 
+                onClick={() => navigate('/metaverse')}
+                className="px-6"
+              >
+                <Home className="w-4 h-4 mr-2" />
+                Use 2D Map Instead
+              </CyberButton>
+            </div>
+            
+            <p className="text-xs text-white/30 mt-4">
+              The 2D map offers similar navigation without requiring WebGL2.
+            </p>
+          </div>
+        </CyberCard>
+      </div>
+    </div>
+  );
+};
 
 // Zone configurations
 const ZONES = [
