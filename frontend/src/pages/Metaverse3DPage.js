@@ -408,11 +408,6 @@ const Metaverse3DPage = () => {
     return <BrowserCompatibilityError />;
   }
 
-  // Show loading
-  if (isLoading) {
-    return <LoadingScreen message={loadingMessage} />;
-  }
-
   // Show error
   if (error) {
     return (
@@ -435,7 +430,7 @@ const Metaverse3DPage = () => {
 
   return (
     <div className="min-h-screen bg-black relative" data-testid="metaverse-3d-cesium-page">
-      {/* Cesium Container */}
+      {/* Cesium Container - ALWAYS RENDER so ref is available */}
       <div 
         ref={cesiumContainerRef} 
         className="absolute inset-0 pt-16"
