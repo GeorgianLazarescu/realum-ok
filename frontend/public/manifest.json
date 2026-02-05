@@ -1,0 +1,64 @@
+{
+  "name": "REALUM",
+  "short_name": "REALUM",
+  "description": "Educational & Economic Metaverse - Learn, Collaborate, Earn",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#00F0FF",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/logo192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/logo512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["education", "finance", "social"],
+  "shortcuts": [
+    {
+      "name": "Dashboard",
+      "short_name": "Home",
+      "description": "View your dashboard",
+      "url": "/dashboard",
+      "icons": [{"src": "/icons/home.png", "sizes": "96x96"}]
+    },
+    {
+      "name": "Courses",
+      "short_name": "Learn",
+      "description": "Browse courses",
+      "url": "/courses",
+      "icons": [{"src": "/icons/book.png", "sizes": "96x96"}]
+    },
+    {
+      "name": "Wallet",
+      "short_name": "Wallet",
+      "description": "Manage tokens",
+      "url": "/wallet",
+      "icons": [{"src": "/icons/wallet.png", "sizes": "96x96"}]
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshots/dashboard.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "label": "Dashboard view"
+    },
+    {
+      "src": "/screenshots/metaverse.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "label": "3D Metaverse"
+    }
+  ],
+  "related_applications": [],
+  "prefer_related_applications": false
+}
