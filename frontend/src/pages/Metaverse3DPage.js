@@ -269,10 +269,6 @@ const Metaverse3DPage = () => {
           onClick={handleEntityClick}
           className="cesium-fullscreen"
         >
-            top: 0,
-            left: 0
-          }}
-        >
           {/* Camera fly to */}
           {flyToDestination && (
             <CameraFlyTo
