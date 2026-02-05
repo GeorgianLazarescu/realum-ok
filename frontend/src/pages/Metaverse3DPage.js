@@ -519,6 +519,23 @@ const Metaverse3DPage = () => {
               >
                 <CyberCard className="p-4 bg-black/95">
                   <h3 className="font-orbitron font-bold text-neon-cyan mb-2">REALUM 3D EARTH</h3>
+                  
+                  {/* World Time Display */}
+                  {worldTime && (
+                    <div className="mb-3 p-2 bg-white/5 rounded-lg">
+                      <div className="flex items-center gap-2 text-sm">
+                        {worldTime.period === 'morning' && <Sunrise className="w-4 h-4 text-orange-400" />}
+                        {worldTime.period === 'afternoon' && <Sun className="w-4 h-4 text-yellow-400" />}
+                        {worldTime.period === 'evening' && <Sunset className="w-4 h-4 text-orange-500" />}
+                        {worldTime.period === 'night' && <Moon className="w-4 h-4 text-blue-300" />}
+                        <span className="text-white/80">{worldTime.description}</span>
+                      </div>
+                      <div className="text-xs text-white/40 mt-1">
+                        Virtual Hour: {worldTime.virtual_hour}:00
+                      </div>
+                    </div>
+                  )}
+                  
                   <p className="text-xs text-white/60 mb-3">
                     Explore the world with real OpenStreetMap data and 3D buildings.
                     REALUM zones are marked at key global locations.
@@ -527,12 +544,35 @@ const Metaverse3DPage = () => {
                     <p>• Drag to rotate globe</p>
                     <p>• Scroll to zoom</p>
                     <p>• Click markers for zones</p>
-                    <p>• Search any location</p>
+                    <p>• Yellow markers = NPCs</p>
                   </div>
                 </CyberCard>
               </motion.div>
             )}
           </AnimatePresence>
+
+          {/* Active Events Banner */}
+          {activeEvents.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="absolute top-20 left-1/2 -translate-x-1/2 pointer-events-auto"
+            >
+              <CyberCard className="px-4 py-2 bg-gradient-to-r from-purple-900/90 to-pink-900/90 border-purple-500/50">
+                <div className="flex items-center gap-3">
+                  <Calendar className="w-5 h-5 text-purple-400" />
+                  <div>
+                    <p className="text-xs text-purple-300 font-bold">{activeEvents[0].name}</p>
+                    <p className="text-xs text-white/60">
+                      {activeEvents[0].bonus_rlm > 0 && `+${activeEvents[0].bonus_rlm} RLM bonus`}
+                      {activeEvents[0].bonus_xp > 1 && ` • ${activeEvents[0].bonus_xp}x XP`}
+                      {activeEvents[0].days_remaining !== undefined && ` • ${activeEvents[0].days_remaining} days left`}
+                    </p>
+                  </div>
+                </div>
+              </CyberCard>
+            </motion.div>
+          )}
 
           {/* Zone list */}
           <motion.div
