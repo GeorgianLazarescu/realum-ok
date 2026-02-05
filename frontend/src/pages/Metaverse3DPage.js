@@ -328,7 +328,22 @@ const Metaverse3DPage = () => {
   const navigate = useNavigate();
   const [selectedZone, setSelectedZone] = useState(null);
   const [showInfo, setShowInfo] = useState(true);
+  const [webglSupport, setWebglSupport] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
   const containerRef = useRef();
+
+  // Check WebGL support on mount
+  useEffect(() => {
+    const checkSupport = () => {
+      const result = checkWebGLSupport();
+      setWebglSupport(result);
+      setIsLoading(false);
+    };
+    
+    // Small delay to ensure DOM is ready
+    const timer = setTimeout(checkSupport, 100);
+    return () => clearTimeout(timer);
+  }, []);
 
   const handleZoneSelect = (zone) => {
     setSelectedZone(zone);
@@ -339,6 +354,16 @@ const Metaverse3DPage = () => {
       navigate(selectedZone.path);
     }
   };
+
+  // Show loading state
+  if (isLoading) {
+    return <LoadingScreen />;
+  }
+
+  // Show error if WebGL2 is not supported
+  if (!webglSupport?.supported || webglSupport?.version < 2) {
+    return <BrowserCompatibilityError webglInfo={webglSupport} />;
+  }
 
   return (
     <div 
