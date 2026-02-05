@@ -85,6 +85,14 @@ function App() {
                 </ProtectedRoute>
               } />
               
+              <Route path="/metaverse-3d" element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <Metaverse3DPage />
+                  </AppLayout>
+                </ProtectedRoute>
+              } />
+              
               <Route path="/jobs" element={
                 <ProtectedRoute>
                   <AppLayout>
