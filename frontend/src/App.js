@@ -39,14 +39,48 @@ import {
   ChatPage
 } from './pages';
 
-// App Layout Component
-const AppLayout = ({ children }) => (
-  <div className="min-h-screen bg-black text-white scanlines noise">
-    <Navbar />
-    <DailyReward />
-    {children}
-  </div>
-);
+// App Layout Component with Intro
+const AppLayout = ({ children }) => {
+  const [showIntro, setShowIntro] = useState(false);
+
+  useEffect(() => {
+    // Check if user has seen the intro
+    const hasSeenIntro = localStorage.getItem('realum_intro_seen');
+    if (!hasSeenIntro) {
+      setShowIntro(true);
+    }
+  }, []);
+
+  const handleIntroComplete = () => {
+    localStorage.setItem('realum_intro_seen', 'true');
+    setShowIntro(false);
+  };
+
+  return (
+    <div className="min-h-screen bg-black text-white scanlines noise">
+      <Navbar />
+      <DailyReward />
+      {showIntro && (
+        <StorytellingIntro 
+          onComplete={handleIntroComplete} 
+          onSkip={handleIntroComplete} 
+        />
+      )}
+      {children}
+      <Toaster 
+        position="bottom-right" 
+        theme="dark"
+        toastOptions={{
+          style: {
+            background: 'rgba(0, 0, 0, 0.9)',
+            border: '1px solid rgba(0, 240, 255, 0.3)',
+            color: 'white',
+          },
+        }}
+      />
+    </div>
+  );
+};
 
 // Main App Component
 function App() {
