@@ -265,6 +265,8 @@ app.include_router(mobile_router)
 app.include_router(life_router)
 app.include_router(events_router)
 app.include_router(npc_router)
+app.include_router(payments_router)
+app.include_router(family_router)
 
 @app.get("/")
 async def root():
