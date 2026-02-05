@@ -19,3 +19,5 @@ export { default as AchievementsPage } from './AchievementsPage';
 export { default as SocialPage } from './SocialPage';
 export { default as NotificationsPage } from './NotificationsPage';
 export { default as ChatPage } from './ChatPage';
+export { default as PurchaseRLMPage } from './PurchaseRLMPage';
+export { default as FamilyPage } from './FamilyPage';
