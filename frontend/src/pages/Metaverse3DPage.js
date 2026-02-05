@@ -314,13 +314,57 @@ function Scene({ onZoneSelect, selectedZone }) {
 // Loading fallback
 function LoadingScreen() {
   return (
-    <div className="absolute inset-0 flex items-center justify-center bg-black">
+    <div className="min-h-screen flex items-center justify-center bg-black" data-testid="metaverse-loading">
       <div className="text-center">
         <div className="w-16 h-16 border-4 border-neon-cyan/30 border-t-neon-cyan rounded-full animate-spin mx-auto mb-4" />
         <p className="text-neon-cyan font-mono">Loading 3D Metaverse...</p>
+        <p className="text-white/40 text-sm mt-2">Checking browser compatibility...</p>
       </div>
     </div>
   );
+}
+
+// Error boundary for Canvas errors
+class CanvasErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error('3D Canvas Error:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="absolute inset-0 flex items-center justify-center bg-black pt-16">
+          <div className="text-center p-8">
+            <AlertTriangle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+            <h2 className="text-xl font-orbitron text-red-500 mb-2">3D Rendering Error</h2>
+            <p className="text-white/60 mb-4 max-w-md">
+              An error occurred while rendering the 3D scene. This may be due to browser compatibility issues.
+            </p>
+            <p className="text-xs text-white/40 mb-4 font-mono">
+              {this.state.error?.message || 'Unknown error'}
+            </p>
+            <button
+              onClick={() => window.location.href = '/metaverse'}
+              className="px-6 py-2 bg-neon-cyan/20 border border-neon-cyan text-neon-cyan hover:bg-neon-cyan/30 transition-colors"
+            >
+              Use 2D Map Instead
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
 }
 
 // Main page component
