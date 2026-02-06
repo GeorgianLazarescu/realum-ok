@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
   Coins, Zap, Star, Award, Briefcase, GraduationCap, ShoppingBag, 
-  Layers, Vote, Building2, TrendingUp, Users, Heart
+  Layers, Vote, Building2, TrendingUp, Users, Heart, Scale, BarChart3
 } from 'lucide-react';
 import axios from 'axios';
 import { API } from '../utils/api';
@@ -36,6 +36,8 @@ const DashboardPage = () => {
     { label: t('jobs'), icon: Briefcase, path: '/jobs', color: '#FF003C' },
     { label: t('courses'), icon: GraduationCap, path: '/courses', color: '#9D4EDD' },
     { label: 'Bank', icon: Building2, path: '/bank', color: '#22C55E' },
+    { label: 'Politică', icon: Scale, path: '/politics', color: '#8B5CF6' },
+    { label: 'Bursă', icon: BarChart3, path: '/stocks', color: '#F59E0B' },
     { label: t('metaverse'), icon: Layers, path: '/metaverse/3d', color: '#00F0FF' },
     { label: 'Family', icon: Heart, path: '/family', color: '#FF69B4' },
     { label: t('marketplace'), icon: ShoppingBag, path: '/marketplace', color: '#FF6B35' }
