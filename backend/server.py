@@ -46,6 +46,7 @@ from routers.npc import router as npc_router
 from routers.payments import router as payments_router
 from routers.family import router as family_router
 from routers.bank import router as bank_router
+from routers.politics import router as politics_router
 
 from core.security import SecurityHeadersMiddleware, RequestSizeMiddleware
 from core.rate_limiter import rate_limiter
