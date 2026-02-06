@@ -22,3 +22,5 @@ export { default as ChatPage } from './ChatPage';
 export { default as PurchaseRLMPage } from './PurchaseRLMPage';
 export { default as FamilyPage } from './FamilyPage';
 export { default as BankPage } from './BankPage';
+export { default as PoliticsPage } from './PoliticsPage';
+export { default as StocksPage } from './StocksPage';

@@ -47,6 +47,7 @@ from routers.payments import router as payments_router
 from routers.family import router as family_router
 from routers.bank import router as bank_router
 from routers.politics import router as politics_router
+from routers.stocks import router as stocks_router
 
 from core.security import SecurityHeadersMiddleware, RequestSizeMiddleware
 from core.rate_limiter import rate_limiter
@@ -271,6 +272,7 @@ app.include_router(payments_router)
 app.include_router(family_router)
 app.include_router(bank_router)
 app.include_router(politics_router)
+app.include_router(stocks_router)
 
 @app.get("/")
 async def root():
