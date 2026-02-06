@@ -271,6 +271,14 @@ function App() {
                 </ProtectedRoute>
               } />
               
+              <Route path="/bank" element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <BankPage />
+                  </AppLayout>
+                </ProtectedRoute>
+              } />
+              
               {/* Catch all - redirect to dashboard */}
               <Route path="*" element={<Navigate to="/dashboard" replace />} />
             </Routes>
