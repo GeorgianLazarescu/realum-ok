@@ -281,6 +281,22 @@ function App() {
                 </ProtectedRoute>
               } />
               
+              <Route path="/politics" element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <PoliticsPage />
+                  </AppLayout>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/stocks" element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <StocksPage />
+                  </AppLayout>
+                </ProtectedRoute>
+              } />
+              
               {/* Catch all - redirect to dashboard */}
               <Route path="*" element={<Navigate to="/dashboard" replace />} />
             </Routes>
