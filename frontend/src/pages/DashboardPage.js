@@ -35,10 +35,10 @@ const DashboardPage = () => {
   const quickActions = [
     { label: t('jobs'), icon: Briefcase, path: '/jobs', color: '#FF003C' },
     { label: t('courses'), icon: GraduationCap, path: '/courses', color: '#9D4EDD' },
-    { label: t('marketplace'), icon: ShoppingBag, path: '/marketplace', color: '#FF6B35' },
+    { label: 'Bank', icon: Building2, path: '/bank', color: '#22C55E' },
     { label: t('metaverse'), icon: Layers, path: '/metaverse/3d', color: '#00F0FF' },
-    { label: t('voting'), icon: Vote, path: '/voting', color: '#40C4FF' },
-    { label: 'Family', icon: Heart, path: '/family', color: '#FF69B4' }
+    { label: 'Family', icon: Heart, path: '/family', color: '#FF69B4' },
+    { label: t('marketplace'), icon: ShoppingBag, path: '/marketplace', color: '#FF6B35' }
   ];
   
   return (
