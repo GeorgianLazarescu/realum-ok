@@ -42,7 +42,9 @@ import {
   ChatPage,
   PurchaseRLMPage,
   FamilyPage,
-  BankPage
+  BankPage,
+  PoliticsPage,
+  StocksPage
 } from './pages';
 
 // App Layout Component with Intro
