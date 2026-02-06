@@ -270,6 +270,7 @@ app.include_router(npc_router)
 app.include_router(payments_router)
 app.include_router(family_router)
 app.include_router(bank_router)
+app.include_router(politics_router)
 
 @app.get("/")
 async def root():
