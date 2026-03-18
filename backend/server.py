@@ -277,6 +277,10 @@ app.include_router(family_router)
 app.include_router(bank_router)
 app.include_router(politics_router)
 app.include_router(stocks_router)
+app.include_router(treasury_router)
+app.include_router(companies_router)
+app.include_router(realestate_router)
+app.include_router(premium_router)
 
 @app.get("/")
 async def root():
