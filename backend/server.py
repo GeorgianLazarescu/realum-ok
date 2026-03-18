@@ -48,6 +48,10 @@ from routers.family import router as family_router
 from routers.bank import router as bank_router
 from routers.politics import router as politics_router
 from routers.stocks import router as stocks_router
+from routers.treasury import router as treasury_router
+from routers.companies import router as companies_router
+from routers.realestate import router as realestate_router
+from routers.premium import router as premium_router
 
 from core.security import SecurityHeadersMiddleware, RequestSizeMiddleware
 from core.rate_limiter import rate_limiter
