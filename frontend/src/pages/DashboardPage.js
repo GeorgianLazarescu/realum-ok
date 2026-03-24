@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { 
   Coins, Zap, Star, Award, Briefcase, GraduationCap, ShoppingBag, 
   Layers, Vote, Building2, TrendingUp, Users, Heart, Scale, BarChart3,
-  Home, Crown
+  Home, Crown, Gamepad2, Factory
 } from 'lucide-react';
 import axios from 'axios';
 import { API } from '../utils/api';
@@ -34,12 +34,12 @@ const DashboardPage = () => {
   };
   
   const quickActions = [
-    { label: t('jobs'), icon: Briefcase, path: '/jobs', color: '#FF003C' },
-    { label: t('courses'), icon: GraduationCap, path: '/courses', color: '#9D4EDD' },
     { label: 'Bank', icon: Building2, path: '/bank', color: '#22C55E' },
-    { label: 'Politică', icon: Scale, path: '/politics', color: '#8B5CF6' },
     { label: 'Bursă', icon: BarChart3, path: '/stocks', color: '#F59E0B' },
+    { label: 'Politică', icon: Scale, path: '/politics', color: '#8B5CF6' },
+    { label: 'Companii', icon: Factory, path: '/companies', color: '#EC4899' },
     { label: 'Imobiliare', icon: Home, path: '/realestate', color: '#14B8A6' },
+    { label: 'Jocuri', icon: Gamepad2, path: '/games', color: '#EF4444' },
     { label: t('metaverse'), icon: Layers, path: '/metaverse/3d', color: '#00F0FF' },
     { label: 'Premium', icon: Crown, path: '/premium', color: '#FFD700' }
   ];
