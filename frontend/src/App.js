@@ -44,7 +44,11 @@ import {
   FamilyPage,
   BankPage,
   PoliticsPage,
-  StocksPage
+  StocksPage,
+  TreasuryPage,
+  CompaniesPage,
+  RealEstatePage,
+  PremiumPage
 } from './pages';
 
 // App Layout Component with Intro
