@@ -78,8 +78,8 @@ Build a complex, full-stack metaverse application called "REALUM" with multiple 
 ### 📋 BACKLOG (Not Yet Implemented)
 
 #### High Priority (P1)
+- [x] Stock price charts (historical data visualization) ✅ COMPLETED
 - [ ] WebSocket notifications (real-time updates)
-- [ ] Stock price charts (historical data visualization)
 - [ ] Guild/Alliance system
 
 #### Medium Priority (P2)
@@ -135,6 +135,7 @@ Build a complex, full-stack metaverse application called "REALUM" with multiple 
 - `POST /api/stocks/sell` - Sell shares
 - `GET /api/stocks/leaderboard` - Top investors
 - `GET /api/stocks/sectors` - Sector performance
+- `GET /api/stocks/history/{id}` - Price history chart data (30 days) ✅ NEW
 
 ### Social
 - `/api/family/*` - Family system

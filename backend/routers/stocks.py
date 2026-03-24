@@ -569,3 +569,116 @@ async def get_sector_performance():
             sectors[sector]["avg_change"] = round(sectors[sector]["avg_change"] / count, 2)
     
     return {"sectors": sectors}
+
+
+
+# ============== PRICE HISTORY ==============
+
+@router.get("/history/{company_id}")
+async def get_price_history(company_id: str, days: int = 30):
+    """Get or generate price history for a company"""
+    company = await db.stock_companies.find_one({"id": company_id})
+    if not company:
+        raise HTTPException(status_code=404, detail="Company not found")
+    
+    price_history = company.get("price_history", [])
+    
+    # If no history, generate simulated data
+    if len(price_history) < 10:
+        base_price = company.get("base_price", 100)
+        current_price = company.get("current_price", base_price)
+        volatility = company.get("volatility", 0.05)
+        
+        # Generate historical data points (simulated)
+        now = datetime.now(timezone.utc)
+        simulated_history = []
+        
+        # Start from base price and simulate path to current
+        price = base_price
+        for i in range(days, 0, -1):
+            # Random walk towards current price
+            target_diff = (current_price - price) / i if i > 0 else 0
+            random_change = random.uniform(-volatility, volatility) * price
+            price = max(1, price + target_diff * 0.5 + random_change)
+            
+            timestamp = (now - timedelta(days=i)).isoformat()
+            simulated_history.append({
+                "timestamp": timestamp,
+                "price": round(price, 2),
+                "open": round(price * random.uniform(0.98, 1.02), 2),
+                "high": round(price * random.uniform(1.0, 1.05), 2),
+                "low": round(price * random.uniform(0.95, 1.0), 2),
+                "volume": random.randint(1000, 50000)
+            })
+        
+        # Add current price as last point
+        simulated_history.append({
+            "timestamp": now.isoformat(),
+            "price": current_price,
+            "open": company.get("previous_close", current_price),
+            "high": company.get("day_high", current_price),
+            "low": company.get("day_low", current_price),
+            "volume": company.get("volume_today", 0)
+        })
+        
+        price_history = simulated_history
+    
+    return {
+        "company_id": company_id,
+        "symbol": company["symbol"],
+        "name": company["name"],
+        "current_price": company["current_price"],
+        "history": price_history[-days:] if len(price_history) > days else price_history
+    }
+
+
+@router.post("/history/{company_id}/generate")
+async def generate_price_history(company_id: str, days: int = 30):
+    """Generate and store price history for a company"""
+    company = await db.stock_companies.find_one({"id": company_id})
+    if not company:
+        raise HTTPException(status_code=404, detail="Company not found")
+    
+    base_price = company.get("base_price", 100)
+    current_price = company.get("current_price", base_price)
+    volatility = company.get("volatility", 0.05)
+    
+    now = datetime.now(timezone.utc)
+    history = []
+    price = base_price
+    
+    for i in range(days, 0, -1):
+        target_diff = (current_price - price) / i if i > 0 else 0
+        random_change = random.uniform(-volatility, volatility) * price
+        price = max(1, price + target_diff * 0.5 + random_change)
+        
+        timestamp = (now - timedelta(days=i)).isoformat()
+        history.append({
+            "timestamp": timestamp,
+            "price": round(price, 2),
+            "open": round(price * random.uniform(0.98, 1.02), 2),
+            "high": round(price * random.uniform(1.0, 1.05), 2),
+            "low": round(price * random.uniform(0.95, 1.0), 2),
+            "volume": random.randint(1000, 50000)
+        })
+    
+    # Add current day
+    history.append({
+        "timestamp": now.isoformat(),
+        "price": current_price,
+        "open": company.get("previous_close", current_price),
+        "high": company.get("day_high", current_price),
+        "low": company.get("day_low", current_price),
+        "volume": company.get("volume_today", 0)
+    })
+    
+    # Save to database
+    await db.stock_companies.update_one(
+        {"id": company_id},
+        {"$set": {"price_history": history}}
+    )
+    
+    return {
+        "message": f"Generated {days} days of price history for {company['symbol']}",
+        "history_count": len(history)
+    }

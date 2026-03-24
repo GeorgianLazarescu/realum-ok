@@ -3,13 +3,24 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   TrendingUp, TrendingDown, DollarSign, BarChart3, 
   ArrowUpRight, ArrowDownRight, Briefcase, Activity,
-  Loader2, RefreshCw, Search, ChevronRight
+  Loader2, RefreshCw, Search, ChevronRight, X, LineChart
 } from 'lucide-react';
 import axios from 'axios';
 import { API } from '../utils/api';
 import { useAuth } from '../context/AuthContext';
 import { CyberCard, CyberButton } from '../components/common/CyberUI';
 import { toast } from 'sonner';
+import { 
+  LineChart as RechartsLineChart, 
+  Line, 
+  XAxis, 
+  YAxis, 
+  Tooltip, 
+  ResponsiveContainer,
+  Area,
+  AreaChart,
+  CartesianGrid
+} from 'recharts';
 
 const StocksPage = () => {
   const { user, refreshUser } = useAuth();
@@ -30,6 +41,10 @@ const StocksPage = () => {
   const [tradeShares, setTradeShares] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
   
+  // Chart modal
+  const [showChartModal, setShowChartModal] = useState(false);
+  const [chartData, setChartData] = useState(null);
+  const [chartLoading, setChartLoading] = useState(false);
   useEffect(() => {
     fetchAllData();
     // Refresh market data every 30 seconds
@@ -81,6 +96,29 @@ const StocksPage = () => {
     } catch (error) {
       toast.error('Failed to load company details');
     }
+  };
+  
+  const fetchPriceHistory = async (companyId) => {
+    setChartLoading(true);
+    try {
+      const res = await axios.get(`${API}/stocks/history/${companyId}?days=30`);
+      // Format data for Recharts
+      const formattedData = res.data.history.map(point => ({
+        date: new Date(point.timestamp).toLocaleDateString('ro-RO', { month: 'short', day: 'numeric' }),
+        price: point.price,
+        high: point.high,
+        low: point.low,
+        volume: point.volume
+      }));
+      setChartData({
+        ...res.data,
+        history: formattedData
+      });
+      setShowChartModal(true);
+    } catch (error) {
+      toast.error('Failed to load price history');
+    }
+    setChartLoading(false);
   };
   
   const handleTrade = async () => {
@@ -317,6 +355,14 @@ const StocksPage = () => {
                           <td className="py-3 font-mono text-white/50 hidden sm:table-cell">{stock.volume_today?.toLocaleString()}</td>
                           <td className="py-3">
                             <div className="flex gap-1">
+                              <button
+                                onClick={() => fetchPriceHistory(stock.id)}
+                                className="px-2 py-1 text-xs bg-neon-purple/20 text-neon-purple border border-neon-purple/50 hover:bg-neon-purple/30"
+                                title="Vezi Grafic"
+                                data-testid={`chart-btn-${stock.symbol}`}
+                              >
+                                <LineChart className="w-3 h-3" />
+                              </button>
                               <button
                                 onClick={() => openTradeModal(stock, 'buy')}
                                 className="px-2 py-1 text-xs bg-neon-green/20 text-neon-green border border-neon-green/50 hover:bg-neon-green/30"
@@ -600,6 +646,198 @@ const StocksPage = () => {
             </motion.div>
           )}
         </AnimatePresence>
+        
+        {/* Price Chart Modal */}
+        <AnimatePresence>
+          {showChartModal && chartData && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4"
+              onClick={() => setShowChartModal(false)}
+            >
+              <motion.div
+                initial={{ scale: 0.9, y: 20 }}
+                animate={{ scale: 1, y: 0 }}
+                exit={{ scale: 0.9, y: 20 }}
+                className="bg-gray-900 border border-neon-purple p-6 max-w-4xl w-full"
+                onClick={e => e.stopPropagation()}
+                data-testid="price-chart-modal"
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h3 className="font-orbitron text-xl flex items-center gap-2">
+                      <LineChart className="w-5 h-5 text-neon-purple" />
+                      {chartData.symbol} - Evoluție Preț
+                    </h3>
+                    <p className="text-sm text-white/60">{chartData.name}</p>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <div className="text-right">
+                      <div className="text-2xl font-orbitron text-neon-cyan">
+                        {chartData.current_price?.toFixed(2)} RLM
+                      </div>
+                      <div className="text-xs text-white/50">Preț curent</div>
+                    </div>
+                    <button 
+                      onClick={() => setShowChartModal(false)}
+                      className="p-2 hover:bg-white/10 transition-colors"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+                </div>
+                
+                {/* Chart */}
+                <div className="h-80 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={chartData.history} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                      <defs>
+                        <linearGradient id="priceGradient" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#00F0FF" stopOpacity={0.3}/>
+                          <stop offset="95%" stopColor="#00F0FF" stopOpacity={0}/>
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#333" />
+                      <XAxis 
+                        dataKey="date" 
+                        stroke="#666" 
+                        tick={{ fill: '#888', fontSize: 11 }}
+                        tickLine={{ stroke: '#444' }}
+                      />
+                      <YAxis 
+                        stroke="#666" 
+                        tick={{ fill: '#888', fontSize: 11 }}
+                        tickLine={{ stroke: '#444' }}
+                        domain={['auto', 'auto']}
+                        tickFormatter={(value) => `${value.toFixed(0)}`}
+                      />
+                      <Tooltip 
+                        contentStyle={{ 
+                          backgroundColor: '#111', 
+                          border: '1px solid #00F0FF',
+                          borderRadius: 0,
+                          padding: '10px'
+                        }}
+                        labelStyle={{ color: '#00F0FF', fontFamily: 'Orbitron' }}
+                        itemStyle={{ color: '#fff' }}
+                        formatter={(value, name) => {
+                          if (name === 'price') return [`${value.toFixed(2)} RLM`, 'Preț'];
+                          if (name === 'high') return [`${value.toFixed(2)} RLM`, 'Max'];
+                          if (name === 'low') return [`${value.toFixed(2)} RLM`, 'Min'];
+                          return [value, name];
+                        }}
+                      />
+                      <Area 
+                        type="monotone" 
+                        dataKey="price" 
+                        stroke="#00F0FF" 
+                        strokeWidth={2}
+                        fill="url(#priceGradient)"
+                        dot={false}
+                        activeDot={{ r: 4, fill: '#00F0FF', strokeWidth: 0 }}
+                      />
+                      <Line 
+                        type="monotone" 
+                        dataKey="high" 
+                        stroke="#22C55E" 
+                        strokeWidth={1}
+                        strokeDasharray="3 3"
+                        dot={false}
+                      />
+                      <Line 
+                        type="monotone" 
+                        dataKey="low" 
+                        stroke="#EF4444" 
+                        strokeWidth={1}
+                        strokeDasharray="3 3"
+                        dot={false}
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+                
+                {/* Legend */}
+                <div className="flex justify-center gap-6 mt-4 text-xs">
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-0.5 bg-neon-cyan"></div>
+                    <span className="text-white/60">Preț</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-0.5 bg-neon-green" style={{borderStyle: 'dashed'}}></div>
+                    <span className="text-white/60">Maxim</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-0.5 bg-neon-red" style={{borderStyle: 'dashed'}}></div>
+                    <span className="text-white/60">Minim</span>
+                  </div>
+                </div>
+                
+                {/* Stats */}
+                <div className="grid grid-cols-4 gap-4 mt-4">
+                  <div className="p-3 bg-black/50 border border-white/10 text-center">
+                    <div className="text-xs text-white/50">Primul Preț</div>
+                    <div className="font-mono text-neon-cyan">
+                      {chartData.history[0]?.price?.toFixed(2)} RLM
+                    </div>
+                  </div>
+                  <div className="p-3 bg-black/50 border border-white/10 text-center">
+                    <div className="text-xs text-white/50">Ultimul Preț</div>
+                    <div className="font-mono text-neon-cyan">
+                      {chartData.history[chartData.history.length - 1]?.price?.toFixed(2)} RLM
+                    </div>
+                  </div>
+                  <div className="p-3 bg-black/50 border border-white/10 text-center">
+                    <div className="text-xs text-white/50">Maxim 30 zile</div>
+                    <div className="font-mono text-neon-green">
+                      {Math.max(...chartData.history.map(h => h.high || h.price)).toFixed(2)} RLM
+                    </div>
+                  </div>
+                  <div className="p-3 bg-black/50 border border-white/10 text-center">
+                    <div className="text-xs text-white/50">Minim 30 zile</div>
+                    <div className="font-mono text-neon-red">
+                      {Math.min(...chartData.history.map(h => h.low || h.price)).toFixed(2)} RLM
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="flex justify-end gap-3 mt-6">
+                  <CyberButton 
+                    variant="outline" 
+                    onClick={() => {
+                      setShowChartModal(false);
+                      const stock = marketData?.companies?.find(c => c.id === chartData.company_id);
+                      if (stock) openTradeModal(stock, 'buy');
+                    }}
+                  >
+                    <TrendingUp className="w-4 h-4 mr-2" /> Cumpără
+                  </CyberButton>
+                  <CyberButton 
+                    variant="outline" 
+                    onClick={() => {
+                      setShowChartModal(false);
+                      const stock = marketData?.companies?.find(c => c.id === chartData.company_id);
+                      if (stock) openTradeModal(stock, 'sell');
+                    }}
+                  >
+                    <TrendingDown className="w-4 h-4 mr-2" /> Vinde
+                  </CyberButton>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+        
+        {/* Chart Loading Overlay */}
+        {chartLoading && (
+          <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center">
+            <div className="text-center">
+              <Loader2 className="w-8 h-8 animate-spin text-neon-purple mx-auto mb-2" />
+              <p className="text-white/60">Se încarcă graficul...</p>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
