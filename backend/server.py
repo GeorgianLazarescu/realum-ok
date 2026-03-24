@@ -53,6 +53,10 @@ from routers.companies import router as companies_router
 from routers.realestate import router as realestate_router
 from routers.premium import router as premium_router
 from routers.games import router as games_router
+from routers.guilds import router as guilds_router
+from routers.chat import router as chat_router
+from routers.trading import router as trading_router
+from routers.crafting import router as crafting_router
 
 from core.security import SecurityHeadersMiddleware, RequestSizeMiddleware
 from core.rate_limiter import rate_limiter
@@ -283,6 +287,10 @@ app.include_router(companies_router)
 app.include_router(realestate_router)
 app.include_router(premium_router)
 app.include_router(games_router)
+app.include_router(guilds_router)
+app.include_router(chat_router)
+app.include_router(trading_router)
+app.include_router(crafting_router)
 
 @app.get("/")
 async def root():
