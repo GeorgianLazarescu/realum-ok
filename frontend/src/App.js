@@ -49,7 +49,9 @@ import {
   CompaniesPage,
   RealEstatePage,
   PremiumPage,
-  GamesPage
+  GamesPage,
+  GuildsPage,
+  TradingPage
 } from './pages';
 
 // App Layout Component with Intro
@@ -338,6 +340,22 @@ function App() {
                 <ProtectedRoute>
                   <AppLayout>
                     <GamesPage />
+                  </AppLayout>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/guilds" element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <GuildsPage />
+                  </AppLayout>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/trading" element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <TradingPage />
                   </AppLayout>
                 </ProtectedRoute>
               } />

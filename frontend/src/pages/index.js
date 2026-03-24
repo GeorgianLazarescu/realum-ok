@@ -29,3 +29,5 @@ export { default as CompaniesPage } from './CompaniesPage';
 export { default as RealEstatePage } from './RealEstatePage';
 export { default as PremiumPage } from './PremiumPage';
 export { default as GamesPage } from './GamesPage';
+export { default as GuildsPage } from './GuildsPage';
+export { default as TradingPage } from './TradingPage';

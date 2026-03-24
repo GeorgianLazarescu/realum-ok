@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { 
   Coins, Zap, Star, Award, Briefcase, GraduationCap, ShoppingBag, 
   Layers, Vote, Building2, TrendingUp, Users, Heart, Scale, BarChart3,
-  Home, Crown, Gamepad2, Factory
+  Home, Crown, Gamepad2, Factory, Shield, Gavel, MessageSquare
 } from 'lucide-react';
 import axios from 'axios';
 import { API } from '../utils/api';
@@ -40,6 +40,9 @@ const DashboardPage = () => {
     { label: 'Companii', icon: Factory, path: '/companies', color: '#EC4899' },
     { label: 'Imobiliare', icon: Home, path: '/realestate', color: '#14B8A6' },
     { label: 'Jocuri', icon: Gamepad2, path: '/games', color: '#EF4444' },
+    { label: 'Gilde', icon: Shield, path: '/guilds', color: '#3B82F6' },
+    { label: 'Trading', icon: Gavel, path: '/trading', color: '#FBBF24' },
+    { label: 'Chat', icon: MessageSquare, path: '/chat', color: '#10B981' },
     { label: t('metaverse'), icon: Layers, path: '/metaverse/3d', color: '#00F0FF' },
     { label: 'Premium', icon: Crown, path: '/premium', color: '#FFD700' }
   ];
