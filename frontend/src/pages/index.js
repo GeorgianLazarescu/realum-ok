@@ -24,3 +24,7 @@ export { default as FamilyPage } from './FamilyPage';
 export { default as BankPage } from './BankPage';
 export { default as PoliticsPage } from './PoliticsPage';
 export { default as StocksPage } from './StocksPage';
+export { default as TreasuryPage } from './TreasuryPage';
+export { default as CompaniesPage } from './CompaniesPage';
+export { default as RealEstatePage } from './RealEstatePage';
+export { default as PremiumPage } from './PremiumPage';
