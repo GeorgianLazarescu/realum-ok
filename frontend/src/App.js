@@ -51,7 +51,8 @@ import {
   PremiumPage,
   GamesPage,
   GuildsPage,
-  TradingPage
+  TradingPage,
+  BattlePassPage
 } from './pages';
 
 // App Layout Component with Intro
@@ -356,6 +357,14 @@ function App() {
                 <ProtectedRoute>
                   <AppLayout>
                     <TradingPage />
+                  </AppLayout>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/battlepass" element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <BattlePassPage />
                   </AppLayout>
                 </ProtectedRoute>
               } />

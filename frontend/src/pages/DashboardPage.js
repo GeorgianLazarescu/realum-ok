@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { 
   Coins, Zap, Star, Award, Briefcase, GraduationCap, ShoppingBag, 
   Layers, Vote, Building2, TrendingUp, Users, Heart, Scale, BarChart3,
-  Home, Crown, Gamepad2, Factory, Shield, Gavel, MessageSquare
+  Home, Crown, Gamepad2, Factory, Shield, Gavel, MessageSquare, Sword
 } from 'lucide-react';
 import axios from 'axios';
 import { API } from '../utils/api';
@@ -43,6 +43,7 @@ const DashboardPage = () => {
     { label: 'Gilde', icon: Shield, path: '/guilds', color: '#3B82F6' },
     { label: 'Trading', icon: Gavel, path: '/trading', color: '#FBBF24' },
     { label: 'Chat', icon: MessageSquare, path: '/chat', color: '#10B981' },
+    { label: 'Battle Pass', icon: Sword, path: '/battlepass', color: '#A855F7' },
     { label: t('metaverse'), icon: Layers, path: '/metaverse/3d', color: '#00F0FF' },
     { label: 'Premium', icon: Crown, path: '/premium', color: '#FFD700' }
   ];

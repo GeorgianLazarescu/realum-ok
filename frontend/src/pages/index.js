@@ -31,3 +31,4 @@ export { default as PremiumPage } from './PremiumPage';
 export { default as GamesPage } from './GamesPage';
 export { default as GuildsPage } from './GuildsPage';
 export { default as TradingPage } from './TradingPage';
+export { default as BattlePassPage } from './BattlePassPage';
