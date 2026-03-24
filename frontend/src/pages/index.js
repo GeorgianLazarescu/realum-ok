@@ -28,3 +28,4 @@ export { default as TreasuryPage } from './TreasuryPage';
 export { default as CompaniesPage } from './CompaniesPage';
 export { default as RealEstatePage } from './RealEstatePage';
 export { default as PremiumPage } from './PremiumPage';
+export { default as GamesPage } from './GamesPage';

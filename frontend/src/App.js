@@ -48,7 +48,8 @@ import {
   TreasuryPage,
   CompaniesPage,
   RealEstatePage,
-  PremiumPage
+  PremiumPage,
+  GamesPage
 } from './pages';
 
 // App Layout Component with Intro
