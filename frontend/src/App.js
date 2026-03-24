@@ -334,6 +334,14 @@ function App() {
                 </ProtectedRoute>
               } />
               
+              <Route path="/games" element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <GamesPage />
+                  </AppLayout>
+                </ProtectedRoute>
+              } />
+              
               {/* Catch all - redirect to dashboard */}
               <Route path="*" element={<Navigate to="/dashboard" replace />} />
             </Routes>
