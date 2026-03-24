@@ -301,6 +301,38 @@ function App() {
                 </ProtectedRoute>
               } />
               
+              <Route path="/treasury" element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <TreasuryPage />
+                  </AppLayout>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/companies" element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <CompaniesPage />
+                  </AppLayout>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/realestate" element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <RealEstatePage />
+                  </AppLayout>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/premium" element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <PremiumPage />
+                  </AppLayout>
+                </ProtectedRoute>
+              } />
+              
               {/* Catch all - redirect to dashboard */}
               <Route path="*" element={<Navigate to="/dashboard" replace />} />
             </Routes>
