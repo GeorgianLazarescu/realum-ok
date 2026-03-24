@@ -52,6 +52,7 @@ from routers.treasury import router as treasury_router
 from routers.companies import router as companies_router
 from routers.realestate import router as realestate_router
 from routers.premium import router as premium_router
+from routers.games import router as games_router
 
 from core.security import SecurityHeadersMiddleware, RequestSizeMiddleware
 from core.rate_limiter import rate_limiter
@@ -281,6 +282,7 @@ app.include_router(treasury_router)
 app.include_router(companies_router)
 app.include_router(realestate_router)
 app.include_router(premium_router)
+app.include_router(games_router)
 
 @app.get("/")
 async def root():
