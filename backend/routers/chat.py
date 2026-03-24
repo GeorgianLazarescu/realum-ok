@@ -1,1159 +1,320 @@
-from fastapi import APIRouter, HTTPException, Depends, Query, WebSocket, WebSocketDisconnect
-from datetime import datetime, timezone, timedelta
+"""
+REALUM Chat System
+Global chat, guild chat, and private messaging
+"""
+
+from fastapi import APIRouter, HTTPException, Depends, WebSocket, WebSocketDisconnect
+from pydantic import BaseModel, Field
 from typing import Optional, List, Dict
-from pydantic import BaseModel
+from datetime import datetime, timezone, timedelta
 import uuid
 import json
 import asyncio
 
+router = APIRouter(prefix="/api/chat", tags=["Chat System"])
+
 from core.database import db
-from core.auth import get_current_user, require_admin
-from services.notification_service import send_notification
+from core.auth import get_current_user
+from core.utils import serialize_doc
 
-router = APIRouter(prefix="/chat", tags=["Chat"])
 
-# ===================== WEBSOCKET MANAGER =====================
+# ============== CONSTANTS ==============
+
+# Chat channels
+CHAT_CHANNELS = {
+    "global": {"name": "Global", "description": "Chat public pentru toți"},
+    "trade": {"name": "Trade", "description": "Discuții despre tranzacții"},
+    "politics": {"name": "Politică", "description": "Dezbateri politice"},
+    "help": {"name": "Ajutor", "description": "Întrebări și răspunsuri"}
+}
+
+# Rate limiting
+MAX_MESSAGES_PER_MINUTE = 10
+MESSAGE_MAX_LENGTH = 500
+
+
+# ============== CONNECTION MANAGER ==============
 
 class ConnectionManager:
     def __init__(self):
-        # Map of channel_id -> list of (user_id, websocket) tuples
-        self.active_connections: Dict[str, List[tuple]] = {}
-        # Map of user_id -> set of channel_ids they're connected to
-        self.user_channels: Dict[str, set] = {}
-        # Map of user_id -> websocket for direct notifications
+        self.active_connections: Dict[str, List[WebSocket]] = {}
         self.user_connections: Dict[str, WebSocket] = {}
-        # Map of channel_id -> set of user_ids currently typing
-        self.typing_users: Dict[str, set] = {}
-
-    async def connect(self, websocket: WebSocket, channel_id: str, user_id: str):
+    
+    async def connect(self, websocket: WebSocket, channel: str, user_id: str):
         await websocket.accept()
-        
-        if channel_id not in self.active_connections:
-            self.active_connections[channel_id] = []
-        self.active_connections[channel_id].append((user_id, websocket))
-        
-        if user_id not in self.user_channels:
-            self.user_channels[user_id] = set()
-        self.user_channels[user_id].add(channel_id)
-        
+        if channel not in self.active_connections:
+            self.active_connections[channel] = []
+        self.active_connections[channel].append(websocket)
         self.user_connections[user_id] = websocket
-        
-        # Notify others in channel that user joined
-        await self.broadcast_to_channel(channel_id, {
-            "type": "user_joined",
-            "user_id": user_id,
-            "channel_id": channel_id,
-            "timestamp": datetime.now(timezone.utc).isoformat()
-        }, exclude_user=user_id)
-
-    def disconnect(self, websocket: WebSocket, channel_id: str, user_id: str):
-        if channel_id in self.active_connections:
-            self.active_connections[channel_id] = [
-                (uid, ws) for uid, ws in self.active_connections[channel_id]
-                if ws != websocket
-            ]
-            if not self.active_connections[channel_id]:
-                del self.active_connections[channel_id]
-        
-        if user_id in self.user_channels:
-            self.user_channels[user_id].discard(channel_id)
-            if not self.user_channels[user_id]:
-                del self.user_channels[user_id]
-        
+    
+    def disconnect(self, websocket: WebSocket, channel: str, user_id: str):
+        if channel in self.active_connections:
+            if websocket in self.active_connections[channel]:
+                self.active_connections[channel].remove(websocket)
         if user_id in self.user_connections:
             del self.user_connections[user_id]
-        
-        # Remove from typing
-        if channel_id in self.typing_users:
-            self.typing_users[channel_id].discard(user_id)
-
-    async def broadcast_to_channel(self, channel_id: str, message: dict, exclude_user: str = None):
-        if channel_id not in self.active_connections:
-            return
-        
-        message_str = json.dumps(message)
-        disconnected = []
-        
-        for user_id, websocket in self.active_connections[channel_id]:
-            if exclude_user and user_id == exclude_user:
-                continue
-            try:
-                await websocket.send_text(message_str)
-            except Exception:
-                disconnected.append((user_id, websocket))
-        
-        # Clean up disconnected
-        for item in disconnected:
-            self.active_connections[channel_id].remove(item)
-
-    async def send_to_user(self, user_id: str, message: dict):
+    
+    async def broadcast(self, channel: str, message: dict):
+        if channel in self.active_connections:
+            for connection in self.active_connections[channel]:
+                try:
+                    await connection.send_json(message)
+                except:
+                    pass
+    
+    async def send_personal(self, user_id: str, message: dict):
         if user_id in self.user_connections:
             try:
-                await self.user_connections[user_id].send_text(json.dumps(message))
-            except Exception:
+                await self.user_connections[user_id].send_json(message)
+            except:
                 pass
-
-    def get_online_users(self, channel_id: str) -> List[str]:
-        if channel_id not in self.active_connections:
-            return []
-        return list(set(user_id for user_id, _ in self.active_connections[channel_id]))
-
-    async def set_typing(self, channel_id: str, user_id: str, is_typing: bool):
-        if channel_id not in self.typing_users:
-            self.typing_users[channel_id] = set()
-        
-        if is_typing:
-            self.typing_users[channel_id].add(user_id)
-        else:
-            self.typing_users[channel_id].discard(user_id)
-        
-        await self.broadcast_to_channel(channel_id, {
-            "type": "typing",
-            "user_id": user_id,
-            "is_typing": is_typing,
-            "channel_id": channel_id
-        }, exclude_user=user_id)
-
 
 manager = ConnectionManager()
 
-# ===================== MODELS =====================
 
-class ChannelCreate(BaseModel):
-    name: str
-    description: Optional[str] = None
-    channel_type: str = "group"  # direct, group, dao, project
-    is_private: bool = True
-    member_ids: List[str] = []
-    dao_id: Optional[str] = None
-    project_id: Optional[str] = None
+# ============== MODELS ==============
 
-class MessageCreate(BaseModel):
-    content: str
-    message_type: str = "text"  # text, image, file, code, poll
-    reply_to_id: Optional[str] = None
-    attachments: List[Dict] = []
-    mentions: List[str] = []
+class SendMessageRequest(BaseModel):
+    content: str = Field(..., min_length=1, max_length=MESSAGE_MAX_LENGTH)
+    channel: str = "global"
 
-class MessageUpdate(BaseModel):
-    content: str
+class PrivateMessageRequest(BaseModel):
+    recipient_username: str
+    content: str = Field(..., min_length=1, max_length=MESSAGE_MAX_LENGTH)
 
-class ReactionAdd(BaseModel):
-    emoji: str
 
-class PollCreate(BaseModel):
-    question: str
-    options: List[str]
-    expires_in_hours: int = 24
-    allow_multiple: bool = False
+# ============== HELPER FUNCTIONS ==============
 
-# ===================== CHANNELS =====================
+async def check_rate_limit(user_id: str) -> bool:
+    """Check if user can send message (rate limiting)"""
+    one_minute_ago = (datetime.now(timezone.utc) - timedelta(minutes=1)).isoformat()
+    
+    count = await db.chat_messages.count_documents({
+        "sender_id": user_id,
+        "created_at": {"$gte": one_minute_ago}
+    })
+    
+    return count < MAX_MESSAGES_PER_MINUTE
 
-@router.post("/channels")
-async def create_channel(
-    channel: ChannelCreate,
-    current_user: dict = Depends(get_current_user)
-):
-    """Create a new chat channel"""
-    try:
-        channel_id = str(uuid.uuid4())
-        now = datetime.now(timezone.utc).isoformat()
 
-        # For direct messages, check if channel exists
-        if channel.channel_type == "direct" and len(channel.member_ids) == 1:
-            other_user_id = channel.member_ids[0]
-            existing = await db.chat_channels.find_one({
-                "channel_type": "direct",
-                "$or": [
-                    {"participants": [current_user["id"], other_user_id]},
-                    {"participants": [other_user_id, current_user["id"]]}
-                ]
-            })
-            if existing:
-                return {"channel_id": existing["id"], "existing": True}
-
-        channel_data = {
-            "id": channel_id,
-            "name": channel.name,
-            "description": channel.description,
-            "channel_type": channel.channel_type,
-            "created_by": current_user["id"],
-            "dao_id": channel.dao_id,
-            "project_id": channel.project_id,
-            "is_private": channel.is_private,
-            "is_archived": False,
-            "participants": [current_user["id"]] + channel.member_ids,
-            "message_count": 0,
-            "last_message_at": now,
-            "last_message_preview": None,
-            "settings": {
-                "allow_reactions": True,
-                "allow_threads": True,
-                "allow_files": True,
-                "slow_mode_seconds": 0
-            },
-            "created_at": now,
-            "updated_at": now
-        }
-
-        await db.chat_channels.insert_one(channel_data)
-
-        # Add creator as owner
-        await db.chat_members.insert_one({
-            "id": str(uuid.uuid4()),
-            "channel_id": channel_id,
-            "user_id": current_user["id"],
-            "role": "owner",
-            "notifications_enabled": True,
-            "joined_at": now,
-            "last_seen_at": now
-        })
-
-        # Add other members
-        for member_id in channel.member_ids:
-            if member_id != current_user["id"]:
-                await db.chat_members.insert_one({
-                    "id": str(uuid.uuid4()),
-                    "channel_id": channel_id,
-                    "user_id": member_id,
-                    "role": "member",
-                    "notifications_enabled": True,
-                    "joined_at": now,
-                    "last_seen_at": now
-                })
-
-                await send_notification(
-                    user_id=member_id,
-                    title="New Chat Invitation",
-                    message=f"{current_user['username']} added you to {channel.name}",
-                    category="social",
-                    action_url=f"/chat/{channel_id}"
-                )
-
-        return {
-            "message": "Channel created successfully",
-            "channel_id": channel_id
-        }
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+# ============== ENDPOINTS ==============
 
 @router.get("/channels")
-async def get_user_channels(
-    channel_type: Optional[str] = None,
-    current_user: dict = Depends(get_current_user)
+async def get_channels():
+    """Get available chat channels"""
+    return {"channels": CHAT_CHANNELS}
+
+
+@router.get("/messages/{channel}")
+async def get_channel_messages(
+    channel: str,
+    limit: int = 50,
+    before: Optional[str] = None
 ):
-    """Get all channels user is a member of"""
-    try:
-        user_id = current_user["id"]
+    """Get messages from a channel"""
+    if channel not in CHAT_CHANNELS and not channel.startswith("guild_"):
+        raise HTTPException(status_code=404, detail="Channel not found")
+    
+    query = {"channel": channel}
+    if before:
+        query["created_at"] = {"$lt": before}
+    
+    messages = await db.chat_messages.find(
+        query,
+        {"_id": 0}
+    ).sort("created_at", -1).limit(limit).to_list(limit)
+    
+    return {"messages": list(reversed(messages))}
 
-        # Get memberships
-        memberships = await db.chat_members.find(
-            {"user_id": user_id},
-            {"_id": 0}
-        ).to_list(100)
 
-        channel_ids = [m["channel_id"] for m in memberships]
-
-        # Get channels
-        query = {"id": {"$in": channel_ids}, "is_archived": False}
-        if channel_type:
-            query["channel_type"] = channel_type
-
-        channels = await db.chat_channels.find(
-            query,
-            {"_id": 0}
-        ).sort("last_message_at", -1).to_list(100)
-
-        # Enrich with unread counts and member info
-        for channel in channels:
-            membership = next((m for m in memberships if m["channel_id"] == channel["id"]), None)
-            
-            if membership:
-                last_seen = membership.get("last_seen_at", channel["created_at"])
-                unread = await db.chat_messages.count_documents({
-                    "channel_id": channel["id"],
-                    "created_at": {"$gt": last_seen}
-                })
-                channel["unread_count"] = unread
-
-            # For direct messages, get other user info
-            if channel["channel_type"] == "direct":
-                participants = channel.get("participants", [])
-                other_id = next((p for p in participants if p != user_id), None)
-                if other_id:
-                    other_user = await db.users.find_one(
-                        {"id": other_id},
-                        {"_id": 0, "username": 1, "avatar_url": 1}
-                    )
-                    if other_user:
-                        channel["other_user"] = other_user
-
-        return {"channels": channels}
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-@router.get("/channels/{channel_id}")
-async def get_channel_details(
-    channel_id: str,
-    current_user: dict = Depends(get_current_user)
-):
-    """Get channel details with members"""
-    try:
-        # Verify membership
-        membership = await db.chat_members.find_one({
-            "channel_id": channel_id,
-            "user_id": current_user["id"]
-        })
-
-        if not membership:
-            raise HTTPException(status_code=403, detail="Not a member of this channel")
-
-        channel = await db.chat_channels.find_one({"id": channel_id}, {"_id": 0})
-        if not channel:
-            raise HTTPException(status_code=404, detail="Channel not found")
-
-        # Get members
-        members = await db.chat_members.find(
-            {"channel_id": channel_id},
-            {"_id": 0}
-        ).to_list(100)
-
-        # Enrich with user info
-        for member in members:
-            user = await db.users.find_one(
-                {"id": member["user_id"]},
-                {"_id": 0, "username": 1, "avatar_url": 1}
-            )
-            if user:
-                member["username"] = user.get("username")
-                member["avatar_url"] = user.get("avatar_url")
-
-        # Get pinned messages
-        pinned = await db.chat_messages.find(
-            {"channel_id": channel_id, "is_pinned": True},
-            {"_id": 0}
-        ).to_list(10)
-
-        return {
-            "channel": channel,
-            "members": members,
-            "pinned_messages": pinned,
-            "your_role": membership.get("role")
-        }
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-@router.post("/channels/{channel_id}/leave")
-async def leave_channel(
-    channel_id: str,
-    current_user: dict = Depends(get_current_user)
-):
-    """Leave a channel"""
-    try:
-        result = await db.chat_members.delete_one({
-            "channel_id": channel_id,
-            "user_id": current_user["id"]
-        })
-
-        if result.deleted_count == 0:
-            raise HTTPException(status_code=404, detail="Not a member of this channel")
-
-        # Update participant list
-        await db.chat_channels.update_one(
-            {"id": channel_id},
-            {"$pull": {"participants": current_user["id"]}}
-        )
-
-        return {"message": "Left channel successfully"}
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-# ===================== MESSAGES =====================
-
-@router.post("/channels/{channel_id}/messages")
+@router.post("/send")
 async def send_message(
-    channel_id: str,
-    message: MessageCreate,
+    data: SendMessageRequest,
     current_user: dict = Depends(get_current_user)
 ):
     """Send a message to a channel"""
-    try:
-        # Verify membership
-        membership = await db.chat_members.find_one({
-            "channel_id": channel_id,
-            "user_id": current_user["id"]
-        })
-
-        if not membership:
-            raise HTTPException(status_code=403, detail="Not a member of this channel")
-
-        # Check slow mode
-        channel = await db.chat_channels.find_one({"id": channel_id})
-        slow_mode = channel.get("settings", {}).get("slow_mode_seconds", 0)
-        
-        if slow_mode > 0:
-            last_message = await db.chat_messages.find_one(
-                {"channel_id": channel_id, "sender_id": current_user["id"]},
-                sort=[("created_at", -1)]
-            )
-            if last_message:
-                last_time = datetime.fromisoformat(last_message["created_at"].replace('Z', '+00:00'))
-                if (datetime.now(timezone.utc) - last_time).seconds < slow_mode:
-                    raise HTTPException(
-                        status_code=429,
-                        detail=f"Slow mode active. Wait {slow_mode} seconds between messages."
-                    )
-
-        message_id = str(uuid.uuid4())
-        now = datetime.now(timezone.utc).isoformat()
-
-        message_data = {
-            "id": message_id,
-            "channel_id": channel_id,
-            "sender_id": current_user["id"],
-            "content": message.content,
-            "message_type": message.message_type,
-            "reply_to_id": message.reply_to_id,
-            "attachments": message.attachments,
-            "mentions": message.mentions,
-            "reactions": {},
-            "is_edited": False,
-            "is_pinned": False,
-            "is_deleted": False,
-            "thread_count": 0,
-            "created_at": now,
-            "updated_at": now
-        }
-
-        await db.chat_messages.insert_one(message_data)
-        
-        # Remove _id if MongoDB added it
-        message_data.pop("_id", None)
-
-        # Update channel
-        preview = message.content[:50] + "..." if len(message.content) > 50 else message.content
-        await db.chat_channels.update_one(
-            {"id": channel_id},
-            {
-                "$set": {
-                    "last_message_at": now,
-                    "last_message_preview": preview
-                },
-                "$inc": {"message_count": 1}
-            }
-        )
-
-        # Notify mentioned users
-        for mentioned_id in message.mentions:
-            if mentioned_id != current_user["id"]:
-                await send_notification(
-                    user_id=mentioned_id,
-                    title="You were mentioned",
-                    message=f"{current_user['username']} mentioned you in {channel.get('name', 'a chat')}",
-                    category="social",
-                    action_url=f"/chat/{channel_id}#message-{message_id}"
-                )
-
-        # Return message with sender info
-        message_data["sender_username"] = current_user.get("username")
-        message_data["sender_avatar"] = current_user.get("avatar_url")
-
-        return message_data
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-@router.get("/channels/{channel_id}/messages")
-async def get_messages(
-    channel_id: str,
-    before: Optional[str] = None,
-    limit: int = Query(50, le=100),
-    current_user: dict = Depends(get_current_user)
-):
-    """Get messages from a channel"""
-    try:
-        # Verify membership
-        membership = await db.chat_members.find_one({
-            "channel_id": channel_id,
-            "user_id": current_user["id"]
-        })
-
-        if not membership:
-            raise HTTPException(status_code=403, detail="Not a member of this channel")
-
-        query = {"channel_id": channel_id, "is_deleted": False}
-        if before:
-            query["created_at"] = {"$lt": before}
-
-        messages = await db.chat_messages.find(
-            query,
-            {"_id": 0}
-        ).sort("created_at", -1).limit(limit).to_list(limit)
-
-        # Reverse to get chronological order
-        messages.reverse()
-
-        # Enrich with sender info
-        for msg in messages:
-            sender = await db.users.find_one(
-                {"id": msg["sender_id"]},
-                {"_id": 0, "username": 1, "avatar_url": 1}
-            )
-            if sender:
-                msg["sender_username"] = sender.get("username")
-                msg["sender_avatar"] = sender.get("avatar_url")
-
-            # Get reply info if exists
-            if msg.get("reply_to_id"):
-                reply_msg = await db.chat_messages.find_one(
-                    {"id": msg["reply_to_id"]},
-                    {"_id": 0, "content": 1, "sender_id": 1}
-                )
-                if reply_msg:
-                    reply_sender = await db.users.find_one(
-                        {"id": reply_msg["sender_id"]},
-                        {"_id": 0, "username": 1}
-                    )
-                    msg["reply_preview"] = {
-                        "content": reply_msg["content"][:100],
-                        "username": reply_sender.get("username") if reply_sender else "Unknown"
-                    }
-
-        # Update last seen
-        await db.chat_members.update_one(
-            {"channel_id": channel_id, "user_id": current_user["id"]},
-            {"$set": {"last_seen_at": datetime.now(timezone.utc).isoformat()}}
-        )
-
-        return {"messages": messages, "has_more": len(messages) == limit}
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-@router.patch("/channels/{channel_id}/messages/{message_id}")
-async def edit_message(
-    channel_id: str,
-    message_id: str,
-    update: MessageUpdate,
-    current_user: dict = Depends(get_current_user)
-):
-    """Edit a message"""
-    try:
-        message = await db.chat_messages.find_one({
-            "id": message_id,
-            "channel_id": channel_id,
-            "sender_id": current_user["id"]
-        })
-
-        if not message:
-            raise HTTPException(status_code=404, detail="Message not found or not yours")
-
-        now = datetime.now(timezone.utc).isoformat()
-
-        await db.chat_messages.update_one(
-            {"id": message_id},
-            {"$set": {
-                "content": update.content,
-                "is_edited": True,
-                "edited_at": now,
-                "updated_at": now
-            }}
-        )
-
-        return {"message": "Message edited"}
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-@router.delete("/channels/{channel_id}/messages/{message_id}")
-async def delete_message(
-    channel_id: str,
-    message_id: str,
-    current_user: dict = Depends(get_current_user)
-):
-    """Delete a message (soft delete)"""
-    try:
-        message = await db.chat_messages.find_one({
-            "id": message_id,
-            "channel_id": channel_id
-        })
-
-        if not message:
-            raise HTTPException(status_code=404, detail="Message not found")
-
-        # Check permission (sender or channel admin)
-        is_sender = message["sender_id"] == current_user["id"]
-        membership = await db.chat_members.find_one({
-            "channel_id": channel_id,
-            "user_id": current_user["id"]
-        })
-        is_admin = membership and membership.get("role") in ["owner", "admin"]
-
-        if not (is_sender or is_admin):
-            raise HTTPException(status_code=403, detail="Cannot delete this message")
-
-        await db.chat_messages.update_one(
-            {"id": message_id},
-            {"$set": {
-                "is_deleted": True,
-                "deleted_at": datetime.now(timezone.utc).isoformat(),
-                "deleted_by": current_user["id"]
-            }}
-        )
-
-        return {"message": "Message deleted"}
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-# ===================== REACTIONS =====================
-
-@router.post("/channels/{channel_id}/messages/{message_id}/reactions")
-async def add_reaction(
-    channel_id: str,
-    message_id: str,
-    reaction: ReactionAdd,
-    current_user: dict = Depends(get_current_user)
-):
-    """Add a reaction to a message"""
-    try:
-        message = await db.chat_messages.find_one({"id": message_id})
-        if not message:
-            raise HTTPException(status_code=404, detail="Message not found")
-
-        user_id = current_user["id"]
-        emoji = reaction.emoji
-
-        # Get current reactions
-        reactions = message.get("reactions", {})
-        
-        if emoji not in reactions:
-            reactions[emoji] = []
-        
-        if user_id in reactions[emoji]:
-            # Remove reaction
-            reactions[emoji].remove(user_id)
-            if not reactions[emoji]:
-                del reactions[emoji]
-            action = "removed"
-        else:
-            # Add reaction
-            reactions[emoji].append(user_id)
-            action = "added"
-
-        await db.chat_messages.update_one(
-            {"id": message_id},
-            {"$set": {"reactions": reactions}}
-        )
-
-        return {"message": f"Reaction {action}", "action": action}
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-# ===================== THREADS =====================
-
-@router.post("/channels/{channel_id}/messages/{message_id}/thread")
-async def reply_in_thread(
-    channel_id: str,
-    message_id: str,
-    message: MessageCreate,
-    current_user: dict = Depends(get_current_user)
-):
-    """Reply to a message in a thread"""
-    try:
-        parent = await db.chat_messages.find_one({"id": message_id})
-        if not parent:
-            raise HTTPException(status_code=404, detail="Parent message not found")
-
-        thread_id = str(uuid.uuid4())
-        now = datetime.now(timezone.utc).isoformat()
-
-        await db.chat_threads.insert_one({
-            "id": thread_id,
-            "channel_id": channel_id,
-            "parent_message_id": message_id,
-            "sender_id": current_user["id"],
-            "content": message.content,
-            "message_type": message.message_type,
-            "attachments": message.attachments,
-            "is_deleted": False,
-            "created_at": now
-        })
-
-        # Update parent thread count
-        await db.chat_messages.update_one(
-            {"id": message_id},
-            {"$inc": {"thread_count": 1}}
-        )
-
-        return {"message": "Thread reply added", "thread_id": thread_id}
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-@router.get("/channels/{channel_id}/messages/{message_id}/thread")
-async def get_thread(
-    channel_id: str,
-    message_id: str,
-    current_user: dict = Depends(get_current_user)
-):
-    """Get thread replies for a message"""
-    try:
-        threads = await db.chat_threads.find(
-            {"parent_message_id": message_id, "is_deleted": False},
-            {"_id": 0}
-        ).sort("created_at", 1).to_list(100)
-
-        # Enrich with sender info
-        for thread in threads:
-            sender = await db.users.find_one(
-                {"id": thread["sender_id"]},
-                {"_id": 0, "username": 1, "avatar_url": 1}
-            )
-            if sender:
-                thread["sender_username"] = sender.get("username")
-                thread["sender_avatar"] = sender.get("avatar_url")
-
-        return {"threads": threads}
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-# ===================== POLLS =====================
-
-@router.post("/channels/{channel_id}/polls")
-async def create_poll(
-    channel_id: str,
-    poll: PollCreate,
-    current_user: dict = Depends(get_current_user)
-):
-    """Create a poll in a channel"""
-    try:
-        poll_id = str(uuid.uuid4())
-        now = datetime.now(timezone.utc)
-        expires_at = now + timedelta(hours=poll.expires_in_hours)
-
-        # Create poll
-        await db.chat_polls.insert_one({
-            "id": poll_id,
-            "channel_id": channel_id,
-            "creator_id": current_user["id"],
-            "question": poll.question,
-            "options": [{"text": opt, "votes": []} for opt in poll.options],
-            "allow_multiple": poll.allow_multiple,
-            "is_closed": False,
-            "expires_at": expires_at.isoformat(),
-            "created_at": now.isoformat()
-        })
-
-        # Create message for poll
-        message_id = str(uuid.uuid4())
-        await db.chat_messages.insert_one({
-            "id": message_id,
-            "channel_id": channel_id,
-            "sender_id": current_user["id"],
-            "content": f"📊 Poll: {poll.question}",
-            "message_type": "poll",
-            "poll_id": poll_id,
-            "reactions": {},
-            "is_edited": False,
-            "is_pinned": False,
-            "is_deleted": False,
-            "created_at": now.isoformat()
-        })
-
-        return {"message": "Poll created", "poll_id": poll_id}
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-@router.post("/polls/{poll_id}/vote")
-async def vote_on_poll(
-    poll_id: str,
-    option_index: int,
-    current_user: dict = Depends(get_current_user)
-):
-    """Vote on a poll"""
-    try:
-        poll = await db.chat_polls.find_one({"id": poll_id})
-        if not poll:
-            raise HTTPException(status_code=404, detail="Poll not found")
-
-        if poll.get("is_closed"):
-            raise HTTPException(status_code=400, detail="Poll is closed")
-
-        expires_at = datetime.fromisoformat(poll["expires_at"].replace('Z', '+00:00'))
-        if datetime.now(timezone.utc) > expires_at:
-            raise HTTPException(status_code=400, detail="Poll has expired")
-
-        options = poll.get("options", [])
-        if option_index >= len(options):
-            raise HTTPException(status_code=400, detail="Invalid option")
-
-        user_id = current_user["id"]
-
-        # Check if already voted
-        if not poll.get("allow_multiple"):
-            for opt in options:
-                if user_id in opt.get("votes", []):
-                    raise HTTPException(status_code=400, detail="Already voted")
-
-        # Add vote
-        options[option_index]["votes"].append(user_id)
-
-        await db.chat_polls.update_one(
-            {"id": poll_id},
-            {"$set": {"options": options}}
-        )
-
-        return {"message": "Vote recorded"}
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-@router.get("/polls/{poll_id}")
-async def get_poll_results(
-    poll_id: str,
-    current_user: dict = Depends(get_current_user)
-):
-    """Get poll results"""
-    try:
-        poll = await db.chat_polls.find_one({"id": poll_id}, {"_id": 0})
-        if not poll:
-            raise HTTPException(status_code=404, detail="Poll not found")
-
-        # Calculate results
-        total_votes = sum(len(opt.get("votes", [])) for opt in poll.get("options", []))
-        
-        results = []
-        for opt in poll.get("options", []):
-            votes = len(opt.get("votes", []))
-            percentage = (votes / total_votes * 100) if total_votes > 0 else 0
-            results.append({
-                "text": opt["text"],
-                "votes": votes,
-                "percentage": round(percentage, 1),
-                "voted_by_me": current_user["id"] in opt.get("votes", [])
-            })
-
-        return {
-            "poll": {
-                "id": poll["id"],
-                "question": poll["question"],
-                "is_closed": poll.get("is_closed", False),
-                "expires_at": poll.get("expires_at"),
-                "total_votes": total_votes
-            },
-            "results": results
-        }
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-# ===================== DIRECT MESSAGES =====================
-
-@router.post("/direct/{user_id}")
-async def start_direct_message(
-    user_id: str,
-    current_user: dict = Depends(get_current_user)
-):
-    """Start or get direct message channel with a user"""
-    try:
-        if user_id == current_user["id"]:
-            raise HTTPException(status_code=400, detail="Cannot DM yourself")
-
-        # Check if user exists
-        other_user = await db.users.find_one({"id": user_id})
-        if not other_user:
-            raise HTTPException(status_code=404, detail="User not found")
-
-        # Check for existing DM channel
-        existing = await db.chat_channels.find_one({
-            "channel_type": "direct",
-            "participants": {"$all": [current_user["id"], user_id]}
-        })
-
-        if existing:
-            return {"channel_id": existing["id"], "existing": True}
-
-        # Create new DM channel
-        channel_id = str(uuid.uuid4())
-        now = datetime.now(timezone.utc).isoformat()
-
-        await db.chat_channels.insert_one({
-            "id": channel_id,
-            "name": f"DM: {current_user['username']} & {other_user['username']}",
-            "channel_type": "direct",
-            "participants": [current_user["id"], user_id],
-            "is_private": True,
-            "message_count": 0,
-            "created_at": now,
-            "last_message_at": now
-        })
-
-        # Add both users as members
-        for uid in [current_user["id"], user_id]:
-            await db.chat_members.insert_one({
-                "id": str(uuid.uuid4()),
-                "channel_id": channel_id,
-                "user_id": uid,
-                "role": "member",
-                "notifications_enabled": True,
-                "joined_at": now,
-                "last_seen_at": now
-            })
-
-        return {"channel_id": channel_id, "existing": False}
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-# ===================== SEARCH =====================
-
-@router.get("/search")
-async def search_messages(
-    query: str = Query(..., min_length=2),
-    channel_id: Optional[str] = None,
-    current_user: dict = Depends(get_current_user)
-):
-    """Search messages across channels"""
-    try:
-        user_id = current_user["id"]
-
-        # Get user's channels
-        memberships = await db.chat_members.find(
-            {"user_id": user_id},
-            {"channel_id": 1}
-        ).to_list(100)
-        
-        user_channel_ids = [m["channel_id"] for m in memberships]
-
-        # Build search query
-        search_query = {
-            "channel_id": {"$in": user_channel_ids} if not channel_id else channel_id,
-            "is_deleted": False,
-            "content": {"$regex": query, "$options": "i"}
-        }
-
-        if channel_id and channel_id not in user_channel_ids:
-            raise HTTPException(status_code=403, detail="Not a member of this channel")
-
-        messages = await db.chat_messages.find(
-            search_query,
-            {"_id": 0}
-        ).sort("created_at", -1).limit(50).to_list(50)
-
-        # Enrich with sender and channel info
-        for msg in messages:
-            sender = await db.users.find_one(
-                {"id": msg["sender_id"]},
-                {"_id": 0, "username": 1}
-            )
-            if sender:
-                msg["sender_username"] = sender.get("username")
-
-            channel = await db.chat_channels.find_one(
-                {"id": msg["channel_id"]},
-                {"_id": 0, "name": 1}
-            )
-            if channel:
-                msg["channel_name"] = channel.get("name")
-
-        return {"results": messages, "count": len(messages)}
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-
-# ===================== WEBSOCKET ENDPOINTS =====================
-
-async def verify_ws_token(token: str) -> dict:
-    """Verify JWT token for WebSocket connection"""
-    import jwt
-    from core.config import settings
+    if data.channel not in CHAT_CHANNELS and not data.channel.startswith("guild_"):
+        raise HTTPException(status_code=404, detail="Channel not found")
     
-    try:
-        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
-        user_id = payload.get("sub")
-        if not user_id:
-            return None
-        
-        user = await db.users.find_one({"id": user_id}, {"_id": 0, "id": 1, "username": 1})
-        return user
-    except Exception:
-        return None
-
-
-@router.websocket("/ws/{channel_id}")
-async def websocket_endpoint(websocket: WebSocket, channel_id: str, token: str = None):
-    """WebSocket endpoint for real-time chat"""
-    if not token:
-        await websocket.close(code=4001, reason="Token required")
-        return
+    # Rate limit check
+    if not await check_rate_limit(current_user["id"]):
+        raise HTTPException(status_code=429, detail="Too many messages. Wait a moment.")
     
-    user = await verify_ws_token(token)
-    if not user:
-        await websocket.close(code=4001, reason="Invalid token")
-        return
+    now = datetime.now(timezone.utc)
     
-    user_id = user["id"]
-    username = user.get("username", "Unknown")
+    message = {
+        "id": str(uuid.uuid4()),
+        "channel": data.channel,
+        "sender_id": current_user["id"],
+        "sender_username": current_user["username"],
+        "content": data.content,
+        "created_at": now.isoformat()
+    }
+    await db.chat_messages.insert_one(message)
     
-    # Verify user is member of channel
-    membership = await db.chat_members.find_one({
-        "channel_id": channel_id,
-        "user_id": user_id
+    # Broadcast to WebSocket clients
+    await manager.broadcast(data.channel, {
+        "type": "message",
+        "data": serialize_doc(message)
     })
     
-    if not membership:
-        await websocket.close(code=4003, reason="Not a channel member")
-        return
+    return {"message": serialize_doc(message)}
+
+
+@router.get("/private")
+async def get_private_conversations(current_user: dict = Depends(get_current_user)):
+    """Get list of private conversations"""
+    # Get unique conversation partners
+    pipeline = [
+        {"$match": {
+            "$or": [
+                {"sender_id": current_user["id"]},
+                {"recipient_id": current_user["id"]}
+            ]
+        }},
+        {"$group": {
+            "_id": {
+                "$cond": [
+                    {"$eq": ["$sender_id", current_user["id"]]},
+                    "$recipient_id",
+                    "$sender_id"
+                ]
+            },
+            "last_message": {"$last": "$content"},
+            "last_time": {"$last": "$created_at"},
+            "unread": {
+                "$sum": {
+                    "$cond": [
+                        {"$and": [
+                            {"$eq": ["$recipient_id", current_user["id"]]},
+                            {"$eq": ["$read", False]}
+                        ]},
+                        1,
+                        0
+                    ]
+                }
+            }
+        }},
+        {"$sort": {"last_time": -1}},
+        {"$limit": 50}
+    ]
     
-    await manager.connect(websocket, channel_id, user_id)
+    results = await db.private_messages.aggregate(pipeline).to_list(50)
+    
+    conversations = []
+    for r in results:
+        user = await db.users.find_one({"id": r["_id"]})
+        if user:
+            conversations.append({
+                "user_id": r["_id"],
+                "username": user.get("username", "Unknown"),
+                "last_message": r["last_message"],
+                "last_time": r["last_time"],
+                "unread_count": r["unread"]
+            })
+    
+    return {"conversations": conversations}
+
+
+@router.get("/private/{user_id}")
+async def get_private_messages(
+    user_id: str,
+    limit: int = 50,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get private messages with a user"""
+    messages = await db.private_messages.find({
+        "$or": [
+            {"sender_id": current_user["id"], "recipient_id": user_id},
+            {"sender_id": user_id, "recipient_id": current_user["id"]}
+        ]
+    }, {"_id": 0}).sort("created_at", -1).limit(limit).to_list(limit)
+    
+    # Mark as read
+    await db.private_messages.update_many(
+        {"sender_id": user_id, "recipient_id": current_user["id"], "read": False},
+        {"$set": {"read": True}}
+    )
+    
+    return {"messages": list(reversed(messages))}
+
+
+@router.post("/private/send")
+async def send_private_message(
+    data: PrivateMessageRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """Send a private message"""
+    recipient = await db.users.find_one({"username": data.recipient_username})
+    if not recipient:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    if recipient["id"] == current_user["id"]:
+        raise HTTPException(status_code=400, detail="Cannot message yourself")
+    
+    # Rate limit
+    if not await check_rate_limit(current_user["id"]):
+        raise HTTPException(status_code=429, detail="Too many messages")
+    
+    now = datetime.now(timezone.utc)
+    
+    message = {
+        "id": str(uuid.uuid4()),
+        "sender_id": current_user["id"],
+        "sender_username": current_user["username"],
+        "recipient_id": recipient["id"],
+        "recipient_username": recipient["username"],
+        "content": data.content,
+        "read": False,
+        "created_at": now.isoformat()
+    }
+    await db.private_messages.insert_one(message)
+    
+    # Send to recipient via WebSocket
+    await manager.send_personal(recipient["id"], {
+        "type": "private_message",
+        "data": serialize_doc(message)
+    })
+    
+    # Create notification
+    await db.notifications.insert_one({
+        "id": str(uuid.uuid4()),
+        "user_id": recipient["id"],
+        "type": "private_message",
+        "title": "Mesaj Nou",
+        "message": f"{current_user['username']} ți-a trimis un mesaj",
+        "read": False,
+        "created_at": now.isoformat()
+    })
+    
+    return {"message": serialize_doc(message)}
+
+
+# ============== WEBSOCKET ==============
+
+@router.websocket("/ws/{channel}")
+async def websocket_endpoint(websocket: WebSocket, channel: str):
+    """WebSocket for real-time chat"""
+    # Simple auth via query param (in production, use proper auth)
+    token = websocket.query_params.get("token", "")
+    user_id = websocket.query_params.get("user_id", str(uuid.uuid4()))
+    
+    await manager.connect(websocket, channel, user_id)
     
     try:
-        # Send initial connection success with online users
-        online_users = manager.get_online_users(channel_id)
-        await websocket.send_text(json.dumps({
-            "type": "connected",
-            "channel_id": channel_id,
-            "user_id": user_id,
-            "online_users": online_users
-        }))
-        
         while True:
             data = await websocket.receive_text()
-            message_data = json.loads(data)
-            
-            msg_type = message_data.get("type")
-            
-            if msg_type == "message":
-                # Create and broadcast new message
-                message_id = str(uuid.uuid4())
-                now = datetime.now(timezone.utc).isoformat()
-                
-                msg_content = message_data.get("content", "")
-                reply_to = message_data.get("reply_to_id")
-                
-                new_message = {
-                    "id": message_id,
-                    "channel_id": channel_id,
-                    "sender_id": user_id,
-                    "content": msg_content,
-                    "message_type": "text",
-                    "reply_to_id": reply_to,
-                    "is_edited": False,
-                    "is_deleted": False,
-                    "reactions": {},
-                    "created_at": now
-                }
-                
-                await db.chat_messages.insert_one(new_message)
-                new_message.pop("_id", None)
-                
-                # Update channel
-                await db.chat_channels.update_one(
-                    {"id": channel_id},
-                    {
-                        "$inc": {"message_count": 1},
-                        "$set": {"last_message_at": now}
-                    }
-                )
-                
-                # Broadcast to all in channel
-                broadcast_msg = {
-                    "type": "new_message",
-                    "message": {
-                        **new_message,
-                        "sender_username": username
-                    }
-                }
-                await manager.broadcast_to_channel(channel_id, broadcast_msg)
-                
-            elif msg_type == "typing":
-                is_typing = message_data.get("is_typing", True)
-                await manager.set_typing(channel_id, user_id, is_typing)
-                
-            elif msg_type == "read":
-                # Mark messages as read
-                await db.chat_members.update_one(
-                    {"channel_id": channel_id, "user_id": user_id},
-                    {"$set": {"last_seen_at": datetime.now(timezone.utc).isoformat()}}
-                )
-                await manager.broadcast_to_channel(channel_id, {
-                    "type": "read_receipt",
-                    "user_id": user_id,
-                    "channel_id": channel_id,
-                    "timestamp": datetime.now(timezone.utc).isoformat()
-                }, exclude_user=user_id)
-                
-            elif msg_type == "ping":
-                await websocket.send_text(json.dumps({"type": "pong"}))
-                
+            # Echo back or process message
+            await manager.broadcast(channel, {
+                "type": "message",
+                "data": json.loads(data)
+            })
     except WebSocketDisconnect:
-        manager.disconnect(websocket, channel_id, user_id)
-        # Notify others
-        await manager.broadcast_to_channel(channel_id, {
-            "type": "user_left",
-            "user_id": user_id,
-            "channel_id": channel_id,
-            "timestamp": datetime.now(timezone.utc).isoformat()
-        })
-    except Exception:
-        manager.disconnect(websocket, channel_id, user_id)
+        manager.disconnect(websocket, channel, user_id)
 
 
-@router.get("/channels/{channel_id}/online")
-async def get_online_users_in_channel(
-    channel_id: str,
-    current_user: dict = Depends(get_current_user)
-):
-    """Get list of online users in a channel"""
-    online_users = manager.get_online_users(channel_id)
-    
-    # Get user info
-    users_info = []
-    for uid in online_users:
-        user = await db.users.find_one(
-            {"id": uid},
-            {"_id": 0, "id": 1, "username": 1, "avatar_url": 1}
-        )
-        if user:
-            users_info.append(user)
-    
-    return {"online_users": users_info, "count": len(users_info)}
-
-
-@router.get("/channels/{channel_id}/typing")
-async def get_typing_users(
-    channel_id: str,
-    current_user: dict = Depends(get_current_user)
-):
-    """Get list of users currently typing"""
-    typing_users = list(manager.typing_users.get(channel_id, set()))
-    
-    users_info = []
-    for uid in typing_users:
-        if uid != current_user["id"]:
-            user = await db.users.find_one(
-                {"id": uid},
-                {"_id": 0, "id": 1, "username": 1}
-            )
-            if user:
-                users_info.append(user)
-    
-    return {"typing_users": users_info}
-
+@router.get("/online-count/{channel}")
+async def get_online_count(channel: str):
+    """Get count of online users in channel"""
+    count = len(manager.active_connections.get(channel, []))
+    return {"channel": channel, "online_count": count}
