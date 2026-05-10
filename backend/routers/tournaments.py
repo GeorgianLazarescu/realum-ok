@@ -170,6 +170,35 @@ async def get_past_tournaments(limit: int = 10):
     return {"tournaments": tournaments}
 
 
+@router.get("/my-tournaments")
+async def get_my_tournaments(current_user: dict = Depends(get_current_user)):
+    """Get tournaments user is participating in"""
+    user_id = current_user["id"]
+    
+    participations = await db.tournament_participants.find({
+        "user_id": user_id
+    }, {"_id": 0}).sort("joined_at", -1).to_list(50)
+    
+    my_tournaments = []
+    for p in participations:
+        tournament = await db.tournaments.find_one({"id": p["tournament_id"]}, {"_id": 0})
+        if tournament:
+            # Get rank
+            higher_count = await db.tournament_participants.count_documents({
+                "tournament_id": p["tournament_id"],
+                "score": {"$gt": p["score"]}
+            })
+            
+            my_tournaments.append({
+                "tournament": tournament,
+                "my_score": p["score"],
+                "my_rank": higher_count + 1,
+                "joined_at": p["joined_at"]
+            })
+    
+    return {"my_tournaments": my_tournaments}
+
+
 @router.get("/{tournament_id}")
 async def get_tournament_details(tournament_id: str):
     """Get tournament details and leaderboard"""
@@ -350,35 +379,6 @@ async def update_tournament_score(
         "score": round(score, 2),
         "rank": higher_count + 1
     }
-
-
-@router.get("/my-tournaments")
-async def get_my_tournaments(current_user: dict = Depends(get_current_user)):
-    """Get tournaments user is participating in"""
-    user_id = current_user["id"]
-    
-    participations = await db.tournament_participants.find({
-        "user_id": user_id
-    }, {"_id": 0}).sort("joined_at", -1).to_list(50)
-    
-    my_tournaments = []
-    for p in participations:
-        tournament = await db.tournaments.find_one({"id": p["tournament_id"]}, {"_id": 0})
-        if tournament:
-            # Get rank
-            higher_count = await db.tournament_participants.count_documents({
-                "tournament_id": p["tournament_id"],
-                "score": {"$gt": p["score"]}
-            })
-            
-            my_tournaments.append({
-                "tournament": tournament,
-                "my_score": p["score"],
-                "my_rank": higher_count + 1,
-                "joined_at": p["joined_at"]
-            })
-    
-    return {"my_tournaments": my_tournaments}
 
 
 @router.post("/create")

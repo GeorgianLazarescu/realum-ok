@@ -4,7 +4,8 @@ import { motion } from 'framer-motion';
 import { 
   Coins, Zap, Star, Award, Briefcase, GraduationCap, ShoppingBag, 
   Layers, Vote, Building2, TrendingUp, Users, Heart, Scale, BarChart3,
-  Home, Crown, Gamepad2, Factory, Shield, Gavel, MessageSquare, Sword
+  Home, Crown, Gamepad2, Factory, Shield, Gavel, MessageSquare, Sword,
+  Trophy, Activity, BookOpen
 } from 'lucide-react';
 import axios from 'axios';
 import { API } from '../utils/api';
@@ -36,14 +37,18 @@ const DashboardPage = () => {
   const quickActions = [
     { label: 'Bank', icon: Building2, path: '/bank', color: '#22C55E' },
     { label: 'Bursă', icon: BarChart3, path: '/stocks', color: '#F59E0B' },
-    { label: 'Politică', icon: Scale, path: '/politics', color: '#8B5CF6' },
+    { label: 'Derivate', icon: Activity, path: '/derivatives', color: '#8B5CF6' },
+    { label: 'Politică', icon: Scale, path: '/politics', color: '#6366F1' },
     { label: 'Companii', icon: Factory, path: '/companies', color: '#EC4899' },
     { label: 'Imobiliare', icon: Home, path: '/realestate', color: '#14B8A6' },
     { label: 'Jocuri', icon: Gamepad2, path: '/games', color: '#EF4444' },
+    { label: 'Turnee', icon: Trophy, path: '/tournaments', color: '#F59E0B' },
     { label: 'Gilde', icon: Shield, path: '/guilds', color: '#3B82F6' },
+    { label: 'Prieteni', icon: Users, path: '/friends', color: '#10B981' },
     { label: 'Trading', icon: Gavel, path: '/trading', color: '#FBBF24' },
-    { label: 'Chat', icon: MessageSquare, path: '/chat', color: '#10B981' },
+    { label: 'Chat', icon: MessageSquare, path: '/chat', color: '#06B6D4' },
     { label: 'Battle Pass', icon: Sword, path: '/battlepass', color: '#A855F7' },
+    { label: 'Tutorial', icon: BookOpen, path: '/tutorial', color: '#64748B' },
     { label: t('metaverse'), icon: Layers, path: '/metaverse/3d', color: '#00F0FF' },
     { label: 'Premium', icon: Crown, path: '/premium', color: '#FFD700' }
   ];

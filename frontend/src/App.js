@@ -52,7 +52,11 @@ import {
   GamesPage,
   GuildsPage,
   TradingPage,
-  BattlePassPage
+  BattlePassPage,
+  TutorialPage,
+  FriendsPage,
+  TournamentsPage,
+  DerivativesPage
 } from './pages';
 
 // App Layout Component with Intro
@@ -365,6 +369,38 @@ function App() {
                 <ProtectedRoute>
                   <AppLayout>
                     <BattlePassPage />
+                  </AppLayout>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/tutorial" element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <TutorialPage />
+                  </AppLayout>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/friends" element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <FriendsPage />
+                  </AppLayout>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/tournaments" element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <TournamentsPage />
+                  </AppLayout>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/derivatives" element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <DerivativesPage />
                   </AppLayout>
                 </ProtectedRoute>
               } />

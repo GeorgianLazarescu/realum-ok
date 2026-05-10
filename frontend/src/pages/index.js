@@ -32,3 +32,7 @@ export { default as GamesPage } from './GamesPage';
 export { default as GuildsPage } from './GuildsPage';
 export { default as TradingPage } from './TradingPage';
 export { default as BattlePassPage } from './BattlePassPage';
+export { default as TutorialPage } from './TutorialPage';
+export { default as FriendsPage } from './FriendsPage';
+export { default as TournamentsPage } from './TournamentsPage';
+export { default as DerivativesPage } from './DerivativesPage';

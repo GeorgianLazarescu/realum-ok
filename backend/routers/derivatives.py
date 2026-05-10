@@ -472,7 +472,6 @@ async def get_derivatives_stats(current_user: dict = Depends(get_current_user)):
     }, {"profit": 1, "status": 1}).to_list(1000)
     
     options_pnl = sum(o.get("profit", 0) for o in options_closed if o.get("status") == "exercised")
-    options_wins = sum(1 for o in options_closed if o.get("profit", 0) > 0)
     
     return {
         "futures": {
@@ -485,6 +484,7 @@ async def get_derivatives_stats(current_user: dict = Depends(get_current_user)):
             "total_contracts": len(options_closed),
             "exercised": sum(1 for o in options_closed if o.get("status") == "exercised"),
             "expired": sum(1 for o in options_closed if o.get("status") == "expired"),
-            "total_pnl": round(options_pnl, 2)
+            "total_pnl": round(options_pnl, 2),
+            "winning_contracts": sum(1 for o in options_closed if o.get("profit", 0) > 0)
         }
     }

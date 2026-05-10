@@ -75,7 +75,7 @@ async def get_friends_list(current_user: dict = Depends(get_current_user)):
                 try:
                     last_active_dt = datetime.fromisoformat(last_active.replace('Z', '+00:00'))
                     is_online = (now - last_active_dt).total_seconds() < 300
-                except:
+                except (ValueError, TypeError):
                     pass
             
             friends.append({
